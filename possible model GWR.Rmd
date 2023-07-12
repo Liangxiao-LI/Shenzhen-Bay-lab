@@ -1,0 +1,435 @@
+---
+title: "possible model GWR"
+author: "Taiyuan Zhang"
+date: '2023-07-10'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(spgwr)
+library(sp)
+library(readxl)
+```
+
+## GWR
+```{r,echo = FALSE,warning = FALSE, fig.align = 'center',message = FALSE}
+#setwd('Users/86182/R EXCEL')
+#data <- read_excel("C:\Users\86182\R EXCEL\6vxx_variants.xls")
+#setwd("D:/Workspace/R-Works/R-Stat")
+#data<-read.table('6vxx.txt',header = TRUE)
+library(data.table)
+data <- as.data.table(`6vxx`)
+```
+
+```{r}
+# Convert data to spatial object
+coordinates <- expand.grid(X = dt$x, Y = dt$y, Z = dt$z)
+
+#Error: cannot allocate vector of size 3.4 Gb if 单链 92.5 Gb 三链 容量过大
+#poaaible solution:
+#1.https://blog.csdn.net/zhongkeyuanchongqing/article/details/12139914
+#2.https://mattzheng.blog.csdn.net/article/details/51114265?spm=1001.2101.3001.6650.3&utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-3-51114265-blog-121399114.235%5Ev38%5Epc_relevant_anti_t3&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7ECTRLIST%7ERate-3-51114265-blog-121399114.235%5Ev38%5Epc_relevant_anti_t3&utm_relevant_index=6
+coordinates <- cbind(coordinates, X[1, , , , ])
+coords <- SpatialPoints(coordinates)
+meuse.grid <- SpatialPixelsDataFrame(coords, data = data.frame(virusNumber))
+```
+
+```{r pressure, echo=FALSE}
+gwr.model <- gwr(
+  formula = virusNumber ~ x + y + z,
+  data = meuse.grid,
+  coords = coordinates,
+  bandwidth = 5
+)
+```
+
+```{r}
+# Summarize GWR results
+summary(gwr.model)
+
+# Plot GWR coefficients
+plot(gwr.model$SDF, col = terrain.colors(10), sp.layout = list("sp.points", coords, pch = 20))
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#end of GWR
+
+```{r}
+fit0 <- lm(num ~ x+y+z, data = data)
+summary(fit0)
+#Not good
+```
+```{r}
+#使用莫兰指数
+library(spdep)
+
+# Define the data as a spatial object
+d <- data.frame(x = x, y = y, num = num)
+coordinates(d) <- c('x', 'y', 'z')
+
+# Calculate the spatial weights matrix
+W <- nb2listw(knearneigh(d, k = 6, longlat = FALSE))
+
+# Calculate the Moran's I statistic
+moran_i <- moran.test(d$num, W)
+
+# Extract the Moran's I value
+a <- moran_i$estimate
+```
+
+```{r}
+#cluster
+# Load the necessary packages
+library(cluster)
+library(plot3D)
+
+# Combine the input data into a matrix
+data <- cbind(x, y, z)
+
+# Choose the number of clusters
+k <- 3
+
+# Run the k-means clustering algorithm
+kmeans <- kmeans(data, k)
+
+# Extract the cluster labels
+labels <- kmeans$cluster
+
+# Plot the data in 3D, colored by cluster
+scatter3D(x, y, z, col=labels, pch=16)
+
+# Output the cluster labels and num variable
+output <- data.frame(labels, num)
+#不能直接cluster?
+
+
+
+
+
+
+
+
+
+```
+```{r}
+
+# 提取坐标
+coordinates <- data[, 1:3]
+
+# 提取属性
+feature <- data[, 4]
+```
+
+```{r}
+# 使用DBSCAN算法聚类
+library(dbscan)
+dbscan_result <- dbscan(coordinates, eps = 3, minPts = 5)
+#eps 半径的大小？ minpts：neibour数量
+# 可视化结果
+#library(ggplot2)
+library(reshape2)
+```
+
+####
+data_melted <- melt(cbind(coordinates, dbscan_result$cluster))
+ggplot(data_melted, aes(x=X1, y=X2, z=X3, color=factor(value))) + 
+  geom_point() + 
+  labs(title="DBSCAN Clustering Results", color="Cluster") + 
+  theme(plot.title = element_text(hjust = 0.5))
+####
+
+```{r}
+# 使用DBSCAN算法聚类
+library(dbscan)
+dbscan_result <- dbscan(coordinates, eps = 3, minPts = 5)
+```
+
+
+# 可视化结果
+```{r}
+#plot(coordinates, col=dbscan_result$cluster, main="DBSCAN Clustering Results")
+#不能显示数据？
+# 可视化结果
+library(lattice)
+
+# # 将坐标数据和聚类结果合并为一个数据框
+# data_clustered <- cbind(coordinates, dbscan_result$cluster)
+# # 检查数据中是否存在NaN或Inf值
+# any(apply(data_clustered, 2, function(x) any(is.nan(x) | is.infinite(x))))
+# #any(is.nan(data_clustered) | is.infinite(data_clustered))
+# #返回FALSE 说明不存在NAN或INF值
+# # 使用levelplot()函数绘制聚类结果
+# levelplot(data_clustered$V4 ~ data_clustered$V1 * data_clustered$V2 | data_clustered$V3,
+#           col.regions=rainbow(length(unique(dbscan_result$cluster))),
+#           main="DBSCAN Clustering Results",
+#           xlab="X",
+#           ylab="Y",
+#           zlab="Z")
+
+
+# 可视化结果
+library(rgl)
+
+# 使用plot3d()函数绘制聚类结果
+plot3d(coordinates[,1], coordinates[,2], coordinates[,3], col=dbscan_result$cluster, size=3, type="s",
+       xlab="X", ylab="Y", zlab="Z", main="DBSCAN Clustering Results")
+```
+
+```{r}
+hist(feature)
+# 使用K-Means算法聚类
+kmeans_result <- kmeans(features, centers = 3)
+
+# 可视化结果
+plot(features, col = kmeans_result$cluster, pch = 20, main = "K-Means Clustering Results")
+
+
+
+
+
+
+
+
+
+```
+```{r}
+# 使用层次聚类算法聚类
+hclust_result <- hclust(dist(features), method = "ward.D2")
+
+# 可视化结果
+plot(hclust_result, main = "Hierarchical Clustering Results")
+print(selected_rows)
+
+
+```
+
+```{r}
+# 准备数据
+data <- read.table(text = "X	Y	Z
+172.298	252.181	223.613
+174.968	250.129	221.763
+177.648	250.85	219.22
+180.011	249.121	216.808
+183.453	248.37	218.262
+184.863	248.078	214.751
+188.538	247.181	215.047
+189.196	248.675	218.486
+190.407	246.657	221.485
+193.792	245.4	220.288
+196.747	245.65	222.636
+200.327	244.427	222.675
+200.053	240.856	224.12
+203.529	240.903	225.672
+206.681	242.96	226.183
+208.672	241.612	223.246
+209.777	243.828	220.413
+208.8	242.534	217.009
+208.929	244.197	213.627
+208.029	243.526	210
+206.147	240.384	210.983
+202.699	238.851	211.189
+202.358	237.23	214.603
+199.597	234.849	215.665
+198.577	235.02	219.312
+195.701	233.95	221.541
+194.647	236.304	224.304
+191.661	238.173	225.661
+190.867	240.716	222.947
+187.742	242.64	222.084
+186.138	240.677	219.17
+185.966	242.693	215.988
+182.707	244.416	215.144
+181.175	243.288	218.436
+178.566	245.29	220.411
+179.796	247.556	223.249
+177.362	249.212	225.594
+177.166	252.966	225.12
+176.689	255.142	228.227
+176.039	258.907	228.349
+176.984	261.833	230.593
+174.592	264.613	229.582
+171.561	266.463	231.139
+175.109	257.267	233.934
+177.538	255.332	236.194
+175.855	251.912	236.799
+177.633	248.839	238.026
+178.617	246.596	235.13
+179.781	242.948	235.098
+183.515	242.473	234.632
+183.189	238.965	233.183
+186.58	237.756	231.944", header = TRUE)
+
+# 计算笛卡尔距离
+d <- dist(data)
+
+# 检查是否满足最小化的条件
+min_d <- apply(data, 1, function(x) min(sqrt((x[1]-data[,1])^2 + (x[2]-data[,2])^2 + (x[3]-data[,3])^2)))
+all(round(d, 3) == round(matrix(min_d, nrow=nrow(data), ncol=nrow(data)), 3))
+#返回FALSE说明相邻两行笛卡尔坐标距离不一定是最小
+```
+```{r}
+library(data.table)
+data <- as.data.table(`6vxx`)
+feature <- data[, 4]
+```
+
+```{r}
+# # 选出feature列中大于0.001的行
+# print(feature)
+# # 输出选出的行
+# print(selected_rows)
+
+# 计算num列中的分位数
+quantiles <- quantile(data$num, probs = c(0.75, 1))
+
+# 选出num列中在75%到100%分位数之间的行
+selected_rows <- data[data$num >= quantiles[1] & data$num <= quantiles[2], ]
+
+# 输出选出的行
+```
+
+```{r}
+# 加载rgl包
+library(rgl)
+
+# 创建3D场景
+plot3d(selected_rows$x,selected_rows$y, selected_rows$z, col = "blue", size = 3)
+
+# 添加坐标轴标签
+# xlab3d("X")
+# ylab3d("Y")
+# zlab3d("Z")
+#画出这些点在三维空间中
+
+```
+```{r}
+# 加载rgl包
+library(rgl)
+
+# 使用K均值聚类对数据进行聚类
+#相邻较近的点？
+k <- kmeans(data[, 1:3], centers = 10)
+
+# 将聚类结果添加到数据框中
+data$cluster <- as.factor(k$cluster)
+
+# 绘制3D散点图，并根据聚类结果着色
+plot3d(data$x, data$y, data$z, col = data$cluster, size = 3)
+print(k$centers)
+print(selected_rows)
+
+#20个中心点
+# 添加坐标轴标签
+# xlab3d("X")
+# ylab3d("Y")
+# zlab3d("Z")
+
+
+```
+
+
+```{r}
+##7.11neight  聚类加每个类打分
+# 将数据的前三列作为聚类变量
+# 将数据的前三列作为聚类变量
+variables <- data[,1:3]
+
+# 使用k-means算法对数据进行聚类
+set.seed(123) # 设定随机数种子，以便结果可复现
+k <- kmeans(variables, centers = 10)
+
+# 将聚类结果添加到数据框中
+plot3d(data$x, data$y, data$z, col = data$cluster, size = 3)
+data$cluster <- as.factor(k$cluster)
+print(k$centers)
+print(data)
+```
+
+```{r}
+library(dplyr)
+
+# 假设你的数据框名为data
+data %>%
+  group_by(cluster) %>%
+  summarize(mean_num = mean(num))
+
+# 对cluster和num列进行排序
+data_sorted <- data %>% arrange(cluster, num)
+
+# 根据num列对cluster进行汇总统计
+data_summary <- data %>% group_by(cluster) %>% summarize(mean_num = mean(num))
+
+# 根据mean_num列对cluster进行排序
+data_sorted <- data_summary %>% arrange(mean_num)
+# 将数据框按照mean_num列进行排序
+# 对数据框按照mean_num列进行排序
+print(data_sorted)
+print(data)
+#最大9，8 region  在分10个区的情况
+```
+```{r}
+
+```
+
+```{r}
+# 创建一个空白的3D散点图
+plot.new()
+plot.window(xlim = c(1, 10), ylim = c(0, max(data$mean_num)), zlim = c(1, nrow(data)))
+title(main = "3D Scatter Plot", xlab = "Cluster", ylab = "Mean_num", zlab = "Row Number")
+
+# 绘制散点图
+for (i in 1:nrow(data)) {
+  col <- as.numeric(data[i, "cluster"])
+  col <- col %/% (10 / 8) + 1
+  points3d(x = as.numeric(data[i, "cluster"]), y = data[i, "mean_num"], z = i, col = col, pch = 16, cex = 1.5)
+}
+
+# 添加颜色图例
+legend("topright", legend = levels(data$cluster), col = 1:8, pch = 16, cex = 1.2, title = "Cluster")
+library(rgl)
+library(dplyr)
+
+# # 将cluster列转换为因子型变量
+# data$cluster <- as.factor(data$cluster)
+# 
+# # 计算每个cluster的坐标值的平均数
+# # data <- data %>%
+# #   group_by(cluster) %>%
+# #   summarize(x = mean(x), y = mean(y), z = mean(z), mean_num = mean(num))
+# 
+# # 创建一个3D画布
+# open3d()
+# 
+# # 对每个cluster的点进行循环
+# for (i in unique(data$cluster)) {
+#   # 选择当前cluster的点的坐标和颜色
+#   points <- data[data$cluster == i, c("x", "y", "z")]
+#   colors <- colorRampPalette(c("blue", "green", "yellow", "red"))(length(points))
+#   # 绘制散点图
+#   points3d(points, color = colors, size = 5)
+# }
+# 
+# # 添加坐标轴和标签
+# axes3d()
+# title3d(xlab = "x", ylab = "y", zlab = "z") 
+
+# 将cluster列转换为因子型变量
+#data$cluster <- as.factor(data$cluster)
+# 加载plotly包
+# library(plotly)
+# 
+# # 创建3D散点图
+# plot_ly(data, x = ~cluster, y = ~mean_num, z = ~row.names(data), color = ~mean_num,
+#         colors = "Blues", marker = list(size = 5, opacity = 0.8),
+#         type = "scatter3d", mode = "markers") %>%
+#   layout(scene = list(xaxis = list(title = "Cluster"),
+#                       yaxis = list(title = "Mean_num"),
+#                       zaxis = list(title = "Row Number")))
+
+```
+
+
+
+
