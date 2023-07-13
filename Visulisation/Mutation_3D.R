@@ -21,15 +21,23 @@ z <- unlist(z)
 z <- as.numeric(z)
 values <- unlist(values)
 values <- as.numeric(values)
-values <- log(values)
+#values <- log(values)
 
-colors <- colorRampPalette(c("lightblue", "darkblue"))(max(values))
+colors <- colorRampPalette(c("lightblue", "darkblue"))
+level = 100
+colors <- colors(level)
+
 col_vec <- numeric()
 for (i in 1:972){ 
   
-  col_vec <- c(col_vec, colors[values[i]])
+  col_vec <- c(col_vec, colors[ ceiling( level*(values[i]/max(values)) )  ])
   
   }
 
+color_legend <- levels(cut(values, breaks = level, include.lowest = TRUE, labels = colors))
+
+
 # 绘制散点图
 plot3d(x, y, z, col = colors, size = 2)
+
+legend("topright", legend = color_legend, fill = colors, title = "Value Range")
