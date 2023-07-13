@@ -15,7 +15,11 @@ library(rgl)
 library(mclust)
 library(plotly)
 library(dplyr)
-a = 1
+library(FNN)
+library(matrixStats)
+library(tidyr)
+library(scales)
+library(factoextra)
 # Load data with spatial coordinates and mutation rates
 data<-as.data.frame(read.csv("data1.csv"))
 data<-na.omit(data)
@@ -184,6 +188,87 @@ data_pca_3<-data2[model_mul_1$clustering ==3,]
 pca_1<-mean(data_pca_1$virusPercent)
 pca_2<-mean(data_pca_2$virusPercent)
 pca_3<-mean(data_pca_3$virusPercent)
+
+#分区域假设检验
+#方法一
+result <- pam(dist(xyz_norm), k = 5)
+# 取出聚类结果中心点
+centers <- result$medoids
+# 取出所有点中心点
+global_center <- colMeans(xyz_norm)
+# 计算每个区域的中心点
+region_centers <- aggregate(xyz_norm, by = list(result$clustering), FUN = "mean")[,-1]
+# 计算每个区域的中心点到整体中心点的距离
+dist_to_global_center <- colSds(t(region_centers)) * sqrt(nrow(region_centers))
+# 进行假设检验
+t.test(dist_to_global_center, mu = 0)
+#我们拒绝掉了H0，说明这种方法对点进行区域划分并不均匀
+cluster_labels_test_1 <- as.factor(result$cluster)
+plot_ly(data2, x = ~X, y = ~Y, z = ~Z, color = ~factor(result$cluster), size = 1, type = "scatter3d") %>%
+  layout(title = "Clustered Data", scene = list(camera = list(eye = list(x = -1.8, y = -1.8, z = 0.5))))
+mut_rate_1 <- aggregate(log_virus_percent, by = list(result$cluster), FUN = mean)
+colnames(mut_rate_1) <- c("cluster", "avg_mut_rate")
+combined_data_11 <- cbind(mut_rate_1, dist_to_global_center)
+ggplot(combined_data_11, aes(x = dist_to_global_center, y = avg_mut_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("Distance to Center") +
+  ylab("Average Mutation Rate") +
+  ggtitle("Relationship between Distance and Mutation Rate")
+
+#方法2 不标准化坐标
+# 计算所有点的中心点
+center_point <- colMeans(data2[, 1:3])
+# 将所有点划分成几个区域
+result_1 <- kmeans(data2[, 1:3], 200, nstart = 20)
+# 计算每个区域的中心点
+region_centers_1 <- result_1$centers
+# 计算每个区域的中心点到整体中心点的距离
+dist_to_center <- apply(region_centers_1, 1, function(x) dist(rbind(x, center_point)))
+# 使用假设检验检验每个区域的中心点到整体中心点的距离是否相等
+t.test(dist_to_center, mu = 0)
+cluster_labels_test <- as.factor(result_1$cluster)
+plot_ly(data2, x = ~X, y = ~Y, z = ~Z, color = ~factor(result_1$cluster), size = 1, type = "scatter3d") %>%
+  layout(title = "Clustered Data", scene = list(camera = list(eye = list(x = -1.8, y = -1.8, z = 0.5))))
+mut_rate <- aggregate(log_virus_percent, by = list(result_1$cluster), FUN = mean)
+colnames(mut_rate) <- c("cluster", "avg_mut_rate")
+combined_data_10 <- cbind(mut_rate, dist_to_center)
+ggplot(combined_data_10, aes(x = dist_to_center, y = avg_mut_rate)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlab("Distance to Center") +
+  ylab("Average Mutation Rate") +
+  ggtitle("Relationship between Distance and Mutation Rate")
+
+#现在有一个问题，比如说我现在得到了距离和突变频率的关系，但在三维空间里，
+#到一个点的距离一样的点可以形成一个球面，
+#我不能说这球面上所有点的突变概率都是一样因为大概率他们是不一样的
+#所以接下来进行等距度分析，更细致地探究距离和突变频率之间的关系
+# 创建距离和突变率的数据框
+# 计算所有点的中心点
+#center_point <- colMeans(data2[, 1:3])
+# 计算每个点到中心点的距离
+#dist_to_center <- apply(data2[, 1:3], 1, function(x) sqrt(sum((x - center_point)^2)))
+# 计算每个点的突变率
+#mut_rate <- log_virus_percent
+# 创建距离和突变率的数据框
+#dismut_data <- data.frame(dist_to_center, mut_rate)
+# 使用等距度分析估计距离上的突变率分布
+#iso_fit <- gstat::idw(mut_rate ~ dist_to_center, dismut_data)
+#dis_mut_grid <- data.frame(dist_to_center = seq(min(dist_to_center), max(dist_to_center), length.out = 100))
+#mut_rate_grid <- predict(iso_fit, newdata = dis_mut_grid)
+#iso_data <- data.frame(dist_to_center = dis_mut_grid$dist_to_center, mut_rate_grid)
+
+#三维空间点转化为特征向量聚类
+X1 <- as.matrix(data2[, 1:4])
+# 将坐标和突变频率组合为特征向量
+feature_vectors <- apply(X1, 1, function(x) c(x[1:3], x[4]))
+# 对特征向量进行聚类分析
+cluster_labels <- kmeans(feature_vectors, centers = 3)
+# 将聚类结果可视化为三维散点图
+colors <- c("red", "blue", "green") # 每个聚类的颜色
+points3d(data2$X, data2$Y, data2$Z, col = colors[cluster_labels$cluster], size = 5)
+
 
 #活性中心聚类
 #以突变频率最小的5个点作为活性中心
