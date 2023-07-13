@@ -15,7 +15,7 @@ library(rgl)
 library(mclust)
 library(plotly)
 library(dplyr)
-
+a = 1
 # Load data with spatial coordinates and mutation rates
 data<-as.data.frame(read.csv("data1.csv"))
 data<-na.omit(data)
