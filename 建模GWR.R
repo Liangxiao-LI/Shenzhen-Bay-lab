@@ -20,6 +20,8 @@ library(matrixStats)
 library(tidyr)
 library(scales)
 library(factoextra)
+library(spatstat)
+library(clValid)
 # Load data with spatial coordinates and mutation rates
 data<-as.data.frame(read.csv("data1.csv"))
 data<-na.omit(data)
@@ -268,6 +270,85 @@ cluster_labels <- kmeans(feature_vectors, centers = 3)
 # 将聚类结果可视化为三维散点图
 colors <- c("red", "blue", "green") # 每个聚类的颜色
 points3d(data2$X, data2$Y, data2$Z, col = colors[cluster_labels$cluster], size = 5)
+
+#特征向量法2
+# 将坐标进行标准化处理
+scaled_coord <- data2 %>%
+  select(X, Y, Z) %>%
+  as.matrix() %>%
+  rescale()
+# 将坐标和突变频率组合为特征向量
+feature_vector <- cbind(scaled_coord, data2$virusPercent)
+# 进行 KMeans 聚类
+set.seed(123)
+kmeans_result <- kmeans(feature_vector, centers = 3, nstart = 20)
+# 将聚类结果添加到数据框中
+data2$cluster <- as.factor(kmeans_result$cluster)
+# 可视化聚类结果
+fviz_cluster(list(data = feature_vector, cluster = kmeans_result$cluster))
+# 比较聚类结果和突变频率
+cluster_freq <- data2 %>%
+  group_by(cluster) %>%
+  summarise(mean_freq = mean(virusPercent), count = n())
+
+total_freq <- mean(data2$virusPercent)
+
+print(cluster_freq)
+print(total_freq)
+# 比较聚类结果和已知的突变高发区
+known_hotspot <- data2 %>%
+  filter(X > 0.5 & Y > 0.5 & Z > 0.5)
+
+print(known_hotspot)
+# 比较不同聚类算法和参数的效果
+fviz_nbclust(feature_vector, kmeans, method = "silhouette")
+# 输出聚类效果评估指标
+#silhouette <- silhouette(kmeans_result$cluster, feature_vector)
+#calinski_harabasz <- calinski_harabasz(feature_vector, kmeans_result$cluster)
+#davies_bouldin <- davies_bouldin(feature_vector, kmeans_result$cluster)
+
+#print(silhouette)
+#print(calinski_harabasz)
+#print(davies_bouldin)
+
+
+#空间插值聚类
+# 创建空间数据框
+coordinates(data2) <- c("X", "Y", "Z")
+
+# 测试不同的半方差函数类型
+vgm_sph <- vgm(psill = 1, model = "Sph", range = 100, nugget = 0.1)
+vgm_exp <- vgm(psill = 1, model = "Exp", range = 100, nugget = 0.1)
+vgm_gau <- vgm(psill = 1, model = "Gau", range = 100, nugget = 0.1)
+
+# 创建空间插值模型(有误)
+#fit_sph <- fit.variogram(variogram(data2$virusPercent ~ 1, data = data2), model = vgm_sph)
+#fit_exp <- fit.variogram(variogram(data2$virusPercent ~ 1, data = data2), model = vgm_exp)
+fit_gau <- fit.variogram(variogram(data2$virusPercent ~ 1, data = data2), model = vgm_gau)
+
+# 查看每个半方差函数类型的 psill 值
+print(c("Spherical" = vgm_sph$psill, "Exponential" = vgm_exp$psill, "Gaussian" = vgm_gau$psill))
+
+# 进行空间插值
+grd <- expand.grid(x = seq(min(data2$X), max(data2$X), by = 0.5),
+                   y = seq(min(data2$Y), max(data2$Y), by = 0.5),
+                   z = seq(min(data2$Z), max(data2$Z), by = 0.5))
+coordinates(grd) <- c("x", "y", "z")
+pred_sph <- predict(fit_sph, grd)
+pred_exp <- predict(fit_exp, asgrd)
+pred_gau <- predict(fit_gau, grd)
+
+# 可视化插值结果
+par(mfrow = c(1, 3))
+slice_sph <- pred_sph[z == median(data2$Z), ]
+image(slice_sph[, c("x", "y")], col = terrain.colors(100), xlab = "x", ylab = "y", main = "Spherical")
+slice_exp <- pred_exp[z == median(data2$Z), ]
+image(slice_exp[, c("x", "y")], col = terrain.colors(100), xlab = "x", ylab = "y", main = "Exponential")
+slice_gau <- pred_gau[z == median(data2$Z), ]
+image(slice_gau[, c("x", "y")], col = terrain.colors(100), xlab = "x", ylab = "y", main = "Gaussian")
+
+
+
 
 
 #活性中心聚类
