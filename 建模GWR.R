@@ -273,12 +273,12 @@ points3d(data2$X, data2$Y, data2$Z, col = colors[cluster_labels$cluster], size =
 
 #特征向量法2
 # 将坐标进行标准化处理
-scaled_coord <- data2 %>%
-  select(X, Y, Z) %>%
-  as.matrix() %>%
-  rescale()
-# 将坐标和突变频率组合为特征向量
-feature_vector <- cbind(scaled_coord, data2$virusPercent)
+#scaled_coord <- data2 %>%
+  #select(X, Y, Z) %>%
+  #as.matrix() %>%
+  #rescale()
+# 将标准化处理过的坐标和突变频率组合为特征向量
+feature_vector <- cbind(xyz_norm, data2$virusPercent)
 # 进行 KMeans 聚类
 set.seed(123)
 kmeans_result <- kmeans(feature_vector, centers = 3, nstart = 20)
@@ -311,8 +311,37 @@ fviz_nbclust(feature_vector, kmeans, method = "silhouette")
 #print(calinski_harabasz)
 #print(davies_bouldin)
 
+#突变概率重排
+k <- 3 # 聚类数
+n <- 1000 # 重排聚类次数
 
-#空间插值聚类
+# 循环聚类并计算均值
+set.seed(123) # 设置随机种子，保证结果可重复
+means_all <- matrix(0, ncol=3, nrow=n) # 存储每个聚类的均值
+for (i in 1:n) {
+  # 打乱重排突变概率
+  prob_shuffle <- sample(data2[,4])
+  
+  #组合特征向量
+  data2_shuffle <- cbind(xyz_norm, prob_shuffle)
+  
+  # 组合特征向量
+  #data2_feat <- cbind(scale(X_shuffle[,2:4]), X_shuffle[,1])
+  
+  # K-means聚类
+  kmeans_res <- kmeans(data2_shuffle, centers=k, nstart=25)
+  
+  # 统计每个类别的均值
+  for (j in 1:k) {
+    means_all[i,j] <- mean(data2_shuffle[kmeans_res$cluster == j, 1:3])
+  }
+}
+print(means_all)
+
+
+
+
+#空间插值聚类(未实现)
 # 创建空间数据框
 coordinates(data2) <- c("X", "Y", "Z")
 
@@ -321,7 +350,7 @@ vgm_sph <- vgm(psill = 1, model = "Sph", range = 100, nugget = 0.1)
 vgm_exp <- vgm(psill = 1, model = "Exp", range = 100, nugget = 0.1)
 vgm_gau <- vgm(psill = 1, model = "Gau", range = 100, nugget = 0.1)
 
-# 创建空间插值模型(有误)
+# 创建空间插值模型
 #fit_sph <- fit.variogram(variogram(data2$virusPercent ~ 1, data = data2), model = vgm_sph)
 #fit_exp <- fit.variogram(variogram(data2$virusPercent ~ 1, data = data2), model = vgm_exp)
 fit_gau <- fit.variogram(variogram(data2$virusPercent ~ 1, data = data2), model = vgm_gau)
