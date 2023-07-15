@@ -333,10 +333,64 @@ for (i in 1:n) {
   
   # 统计每个类别的均值
   for (j in 1:k) {
-    means_all[i,j] <- mean(data2_shuffle[kmeans_res$cluster == j, 1:3])
+    means_all[i,j] <- mean(data2_shuffle[kmeans_res$cluster == j, 4])
   }
 }
 print(means_all)
+
+# 找出每组中最大的数
+max_vals <- apply(means_all, 1, max)
+# 找出排在前5%的数
+top_vals <- head(sort(max_vals, decreasing=TRUE), round(length(max_vals)*0.05))
+# 输出结果
+cat("每组中最大的数：\n")
+print(max_vals)
+cat("排在前5%的数：\n")
+print(top_vals)
+#所以5%的值设为0.02376521
+
+#Permutation法
+
+# 计算原始数据的聚类结果
+orig_clusters <- kmeans(cbind(xyz_norm,data2$virusPercent), 3)
+orig_means <- tapply(data2[,ncol(data2)], orig_clusters$cluster, mean)
+orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
+
+# 进行1000次突变概率重排并计算每次聚类结果
+n_permutations <- 1000
+perm_results <- matrix(NA, n_permutations, length(orig_means))
+for (i in 1:n_permutations) {
+  perm_data <- data2
+  perm_data[,ncol(data2)] <- sample(data2[,ncol(data2)], replace=FALSE)
+  perm_clusters <- kmeans(cbind(xyz_norm,perm_data[,ncol(data2)]), 3)
+  perm_means <- tapply(perm_data[,ncol(data2)], perm_clusters$cluster, mean)
+  perm_pcts <- round(rank(perm_means)/length(perm_means)*100, 2)
+  #这行代码是用来计算每个聚类在重排结果中的百分位数。
+  #具体来说，rank()函数计算了每个聚类均值在重排结果中的排名，
+  #然后除以重排结果的总数，并乘以100，
+  #得到了每个聚类在重排结果中的百分位数。
+  #最后，round()函数将结果保留两位小数并四舍五入。
+  #这个百分位数可以用来评估原始聚类结果中每个聚类的可能性是否显著高于随机聚类结果，
+  #在第六步计算p值时会用到。
+  perm_results[i,] <- perm_pcts
+  #将每次重排得到的聚类结果的百分位数保存在perm_results矩阵中。
+  #具体来说，perm_results矩阵的每一行都对应一次重排结果，
+  #每一列对应一个聚类的百分位数。
+  #在for循环中，第i次重排得到的三个聚类的百分位数保存在perm_pcts向量中，
+  #然后将perm_pcts向量赋值给perm_results矩阵的第i行，
+  #从而将这次重排的聚类结果存储在perm_results矩阵中。
+}
+
+# 计算每个聚类的p值
+p_values <- numeric(length(orig_means))
+for (i in 1:length(orig_means)) {
+  p_values[i] <- mean(perm_results[,i] >= orig_pcts[i])
+}
+
+# 输出结果
+cat("原始聚类结果的均值：", orig_means, "\n")
+cat("原始聚类结果的百分位数：", orig_pcts, "\n")
+cat("p值：", p_values, "\n")
 
 
 
