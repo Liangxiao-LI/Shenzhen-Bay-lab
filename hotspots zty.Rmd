@@ -1,0 +1,214 @@
+--- title: "zty  code" author: "Taiyuan Zhang" date: '2023-07-13' output:
+html_document ---
+```{r setup, include=FALSE} knitr::opts_chunk$set(echo = TRUE) ```
+## R Markdown
+This is an R Markdown document. Markdown is a simple formatting syntax for
+authoring HTML, PDF, and MS Word documents. For more details on using R Markdown
+see <http://rmarkdown.rstudio.com>.
+When you click the **Knit** button a document will be generated that includes
+both content as well as the output of any embedded R code chunks within the
+document. You can embed an R code chunk like this:
+```{r} 
+# Define the center of the sphere center <- c(data[i, "x"], data[i, "y"],data[i, "z"])
+# Print the center vector to check its value print(center)
+# Check the data$x, data$y, data$z vectors for non-numeric values
+print(any(!is.numeric(data$x))) 
+print(any(!is.numeric(data$y)))
+print(any(!is.numeric(data$z)))
+# Calculate the Euclidean distance between each point and the center
+distances<- sqrt((data$x - center[[1]])^2 + (data$y - center[[2]])^2 + (data$z -center[[3]])^2) 
+
+```
+
+
+```{r}
+# Define the radius of the sphere 
+radius <- 5
+
+# Initialize an empty vector to store the sum of ran_num values for each sphere
+sums2 <- c()
+
+# Initialize an empty vector to store the number of points within each sphere
+num_in_sphere <- numeric(nrow(data))
+
+for (i in 1:nrow(data)) {
+  # Define the center of the sphere 
+  center <- c(data[i, "x"], data[i, "y"], data[i, "z"])
+  
+  # Calculate the Euclidean distance between each point and the center
+  distances <- sqrt((data$x - center[[1]])^2 + (data$y - center[[2]])^2 + (data$z - center[[3]])^2)
+  
+  # Subset the data to only include points within the sphere
+  subset_data <- data[distances <= radius, ]
+  
+  # Calculate the sum of ran_num values for the points within the sphere
+  sum_num <- sum(subset_data$ran_num)
+  
+  # Add the sum to the vector of sums
+  sums2 <- c(sums2, sum_num)
+  
+  # Add the number of points within the sphere to the vector of counts
+  num_in_sphere[i] <- nrow(subset_data)
+}
+
+# Print the number of points within each sphere
+print(num_in_sphere)
+```
+
+```{r}
+# 绘制 sums1 的图形
+plot(sums1)
+# 计算 sums1 的长度并打印输出
+length(sums1)
+# 绘制 sums2 的图形
+plot(sums2)
+# 计算 sums2 的长度并打印输出
+length(sums2)
+# 将 sums2 写入数据框的第七列
+data[, 7] <- sums2
+# 打印数据框
+print(data)
+```
+
+<!-- Q here： --> <!-- 1.cannot only do once? --> <!-- 2.radius  really5? other
+shape? --> <!-- 3.how to do hypothesis test? -->how to represent? <----
+
+```{r} 
+##hypothesis test #how can be count as big difference
+#whether two sample from same dist? #Mann-Whitney U test 
+wilcox.test(sums1,sums2)
+#假设一，符合正态分布 #归一化
+``` 
+Till 230717: <!-- Q here： --> <!-- 1.cannot only do once? --> <!-- 2.radius
+really5? other shape? --> <!-- 3.how to do hypothesis test? -->how to represent?
+code 1.Clustering: all sphere 2.method: CLUMPS? 3.problems: 4.To do: empirical
+P-value 5.To improve: better permutation
+```{r} 
+# 创建一个空的向量，用于存储每次迭代的 changesum 
+changesum_vec <- numeric(length=20)
+
+# 定义一个空向量，用于存储所有迭代的 changesum 向量的总和 
+changesum_sum <- numeric(length=972)
+
+# 循环20次计算 changesum 
+for (i in 1:20) { 
+  # 计算 changesum 
+  changesum <- data$sums2 - data$sums1
+  
+  # 将 changesum 添加到向量中 
+  changesum_vec[i] <- sum(changesum)
+  
+  # 将 changesum 向量添加到总和向量中 
+  changesum_sum <- changesum_sum + changesum 
+}
+#print(num_in_sphere)
+# 计算每个球对应的变化
+change_percentage <- changesum_sum / num_in_sphere
+
+# 输出结果 
+print(change_percentage)
+```
+
+```{r} 
+
+
+# 找出change_percentage向量的前5%值 
+top_5_percent <- quantile(change_percentage,probs = 0.95, type = 1)
+# 找出change_percentage向量中大于前5%值的元素的索引 
+top_5_percent_indices <-which(change_percentage > top_5_percent)
+# 输出结果 
+print(top_5_percent_indices) 
+```
+存在一定的集聚性 
+
+```{r} 
+#尝试可视化 #先用DBSCAN聚类 # 导入dbscan包 
+library(dbscan)
+# 导入dbscan包 library(dbscan)
+# 创建一个数据框架，存储所有数字 
+mydf <- data.frame(x = c(10, 12, 72, 73, 74, 82, 84, 92, 300,
+301, 302, 327, 328, 367, 368, 369, 372, 409, 411, 412, 434, 435, 592, 602, 603,
+604, 618, 649, 670, 671, 672, 725, 727, 729, 738, 770, 772, 850, 857, 858, 859,
+893, 905, 951, 952, 956, 957, 958))
+# 使用dbscan()函数将数据分成若干个簇 
+dbscan_result <- dbscan(mydf, eps = 10, minPts = 4)
+# 输出结果 
+dbscan_result$cluster
+```
+
+```{r} 
+#可视化？ 
+#将这些求画出来 # 从数据框架中筛选出指定序号的行 
+data_filtered <- data[c(10, 12, 72, 73,
+74, 82, 84, 92, 300, 301, 302, 327, 328, 367, 368, 369, 372, 409, 411, 412, 434,
+435, 592, 602, 603, 604, 618, 649, 670, 671, 672, 725, 727, 729, 738, 770, 772,
+850, 857, 858, 859, 893, 905, 951, 952, 956, 957, 958), ]
+# 输出结果 data_filtered
+```
+
+```{r}
+library(dbscan)
+library(rgl)
+library(scatterplot3d)
+
+# 读取数据集
+data_filtered <- lapply(data_filtered, as.numeric)
+data_filtered <- data.frame(data_filtered)
+
+# 进行DBSCAN聚类
+dbscan_result <- dbscan(data_filtered[,1:3], eps = 10, minPts = 4)
+
+# 提取聚类标签
+labels <- dbscan_result$cluster
+
+# 绘制散点图
+colors <- rainbow(max(labels)+1)
+
+s3d <- scatterplot3d(data_filtered[,1], data_filtered[,2], data_filtered[,3],
+                     color=colors[labels+1], pch=16, angle=60, main="DBSCAN clustering")
+s3d$legend <- TRUE
+
+# 画出半径为5的球
+for (i in 1:length(unique(labels))) {
+  if (labels[i] != -1) {
+    x0 <- data_filtered[i, "x"]
+    y0 <- data_filtered[i, "y"]
+    z0 <- data_filtered[i, "z"]
+    rgl::sphere3d(x0, y0, z0, radius = 5, alpha = 0.5, color=colors[labels+1])
+  }
+}
+```
+
+Till 230717: <!-- Q here： --> <!-- 1.cannot only do once? --> <!-- 2.radius
+really5? other shape? --> <!-- 3.how to do hypothesis test? -->how to represent?
+code 1.Clustering: all sphere 2.method: CLUMPS? 3.problems: 4.To do: empirical
+P-value 5.To improve: better permutation POSSILBLE improve: use LINCLUST
+Q: #permutation test?
+Conclude: Possible clustering method: 1.basic k-means;basic DBSCAN 2.draw sphere 3.feature vector
+
+#0718
+correlation analysis:
+refer1: interactions among proteins can be inferred from exploring spatial correlation of binding sites.
+
+Achieve: exploring spatial correlation of binding sites to understand the interaction of protein
+
+Method: 
+1.Data exploration:
+chi-square test: significance result :observed greater than expected overlaps
+Caused by three data artifacts:
+1.heterogeneity of the genome (simpson's paradox)
+2.experimental artifact
+3.sheer size of genome
+
+refer 3:
+long-range correlations
+demonstrate: encoded in native topology of the protein
+conduct: scaling analysis on the size dependence of the slowest vibration mode, average path length, and modularity
+For: structure prediction, multi-scale molecular simulations, and the design of molecular machines
+
+Method: ENM:If an ENM can successfully reproduce long-range correlations in the fluctuations of the native proteins, then it can be concluded that the critical dynamics of proteins is encoded by the local contacts in the native structures.(WHY?????)
+
+
+
+
+
