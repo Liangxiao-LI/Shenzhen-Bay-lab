@@ -52,7 +52,7 @@ Load data with spatial coordinates and mutation rates
 #data<-as.data.frame(read.csv("data1.csv"))
 
 #Xiao
-#setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
 data <- read_excel("6vxx_variants.xls")
 
 
@@ -71,7 +71,7 @@ log_virus_percent <- log(data2$virusPercent)
 #Pipe
 #data <- read.csv("data1.csv")
 #Xiao
-#setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
 data <- read_excel("6vxx_variants.xls")
 
 sub_data<-data[1:972,c("X","Y","Z","virusPercent")]
@@ -178,12 +178,12 @@ Model validation
 index <- data.frame()
 
 #标记最大几个值
-topnum = 30
+topnum = 3
 
 #K-num iteration
 Kmin <- 3
-Kmax <- 150
-iteration <- 20 #iteration number per k num 
+Kmax <- 8
+iteration <- 5 #iteration number per k num 
 
 for (i in Kmin:Kmax) {
   

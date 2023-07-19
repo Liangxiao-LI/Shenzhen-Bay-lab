@@ -44,7 +44,7 @@ class(data$z)
 # Define the radius of the sphere 
 #进行讨论
 # Define the radius of the sphere
-radius <- 5
+radius <- 10
 
 # Initialize an empty vector to store the sum of num values for each sphere
 sums1 <- c()
@@ -82,8 +82,9 @@ for (i in 1:nrow(data)) {
 }
 
 # Print the vector of sums1
-print(sums1)
-print(num_in_sphere)
+#print(sums1)
+#print(num_in_sphere)
+print(mean(num_in_sphere))
 ```
 
 ```{r}
@@ -304,11 +305,12 @@ library(plot3D)
 scatter3D(data_filtered$x, data_filtered$y, data_filtered$z, col = "blue")
 
 # Perform DBSCAN clustering on the data
-dbscan_result <- dbscan(data_filtered[, c("x", "y", "z")], eps = 7, minPts = 3)
+dbscan_result <- dbscan(data_filtered[, c("x", "y", "z")], eps = 7,MinPts = 3)
 
 # Add the cluster assignments to the plot
 points3D(data_filtered$x, data_filtered$y, data_filtered$z, col = dbscan_result$cluster)
 #
+
 ```
 
 719：
