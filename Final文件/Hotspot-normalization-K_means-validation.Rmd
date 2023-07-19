@@ -383,9 +383,6 @@ E <- index$Entropy
 Wss <- index$Wss
 
 
-
-
-
 #创建表
 WS <- data.frame()
 
