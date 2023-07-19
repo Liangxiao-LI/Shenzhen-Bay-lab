@@ -298,7 +298,7 @@ print(top_5_percent_indices)
 # Load the required package
 library(plot3D)
 
-data_filtered <- data[c(43, 106,107, 142, 144, 174, 251, 252, 253, 283, 284, 285, 286, 287, 288, 289, 322, 329, 330, 331, 352, 353, 354, 357, 358, 362, 378,384, 385, 387, 388, 389, 496, 497, 498, 511, 519, 646, 647, 648, 778, 779, 780, 793, 795, 970, 972), ]
+data_filtered <- data[c(top_5_percent_indices), ]
 
 # Create a 3D scatter plot of the data with x, y, and z coordinates
 scatter3D(data_filtered$x, data_filtered$y, data_filtered$z, col = "blue")
@@ -343,7 +343,7 @@ topnum <- 50
 
 for (i in 10:epsilon){
   
-  for (j in 1:8){
+  for (j in 1:6){
     
     dbscan_result <- dbscan(data_filtered[, c("x", "y", "z")], eps = i,MinPts = j)
     
@@ -528,6 +528,8 @@ Best_K <- data.frame()
 # 标记最大值
 sorted <- sort(WS$`Weighted score`, decreasing = TRUE)
 top_three <- head(sorted,topnum)
+
+top_three<- unique(top_three)
 
 for (i in 1:length(WS$`Weighted score`)) {
   num <- which(WS$`Weighted score` == top_three[i])
