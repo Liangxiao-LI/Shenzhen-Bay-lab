@@ -1,15 +1,29 @@
 --- title: "zty  code" author: "Taiyuan Zhang" date: '2023-07-13' output:
 html_document ---
 
-# Line33  91 157 165
+# Line33  91 157 165 +4
 data
+
+```{r}
+library(data.table)
+```
+
+
 首先检查数据类型
 ```{r} 
 # Define the center of the sphere center <- c(data[i, "x"], data[i, "y"],data[i, "z"])
 # Print the center vector to check its value print(center)
 # Check the data$x, data$y, data$z vectors for non-numeric values
-library(data.table)
-data <- as.data.table(`6vxx`)
+#library(data.table)
+#data <- as.data.table(`6vxx`)
+#Xiao
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+data <- read_excel("6vxx_variants.xls") 
+data <- data[1:972,c("X","Y","Z","virusNumber")]
+colnames(data)[1] <- "x"
+colnames(data)[2] <- "y"
+colnames(data)[3] <- "z"
+colnames(data)[4] <- "num"
 #data就是6vxx的A chain, 972个
 print(any(!is.numeric(data$x))) 
 print(any(!is.numeric(data$y)))
@@ -75,6 +89,8 @@ print(num_in_sphere)
 ```{r}
 #随机排列放到第五列
 # 新加一列
+data<-as.data.table(data)
+
 data[, sum1 := 1]
 data[, ran_num := 1]
 data[, sum2 := 1]
