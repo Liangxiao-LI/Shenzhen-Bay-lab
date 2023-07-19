@@ -1,0 +1,555 @@
+---
+title: "Hot-Spot-ball"
+author: "Liangxiao LI"
+date: "2023-07-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+change parameter at 81,334, see check mean radius？
+
+```{r}
+library(data.table)
+library(sp)
+library(spgwr)
+#library(spdep)
+library(readxl)
+#library(spatialreg)
+library(gstat)
+library(stats)
+library(dbscan)
+library(cluster)
+library(ggplot2)
+library(scatterplot3d)
+library(rgl)
+library(mclust)
+library(plotly)
+library(dplyr)
+library(FNN)
+library(matrixStats)
+library(tidyr)
+library(scales)
+library(factoextra)
+library(spatstat)
+library(clValid)
+library(factoextra)
+library(fpc)
+library(NbClust)
+library(readxl)
+library(plot3D)
+library(DT)
+```
+
+#First check data type
+```{r} 
+# Define the center of the sphere center <- c(data[i, "x"], data[i, "y"],data[i, "z"])
+# Print the center vector to check its value print(center)
+# Check the data$x, data$y, data$z vectors for non-numeric values
+#library(data.table)
+#data <- as.data.table(`6vxx`)
+#Xiao
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+data <- read_excel("6vxx_variants.xls") 
+data <- data[1:972,c("X","Y","Z","virusNumber")]
+colnames(data)[1] <- "x"
+colnames(data)[2] <- "y"
+colnames(data)[3] <- "z"
+colnames(data)[4] <- "num"
+#data就是6vxx的A chain, 972个
+print(any(!is.numeric(data$x))) 
+print(any(!is.numeric(data$y)))
+print(any(!is.numeric(data$z)))
+nrow(data)
+# Convert the x column to numeric, replacing non-numeric values with NA
+x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+# Check the data types of the x, y, and z columns
+class(data$x)
+class(data$y)
+class(data$z)
+#class(center)
+```
+
+#Calculate center, each ball contain data point
+
+```{r}
+# Define the radius of the sphere 
+#进行讨论
+# Define the radius of the sphere
+radius <- 5
+
+# Initialize an empty vector to store the sum of num values for each sphere
+sums1 <- c()
+
+# Initialize an empty vector to store the number of points within each sphere
+num_in_sphere <- numeric(nrow(data))
+
+# Loop through each point and calculate the sum of num values for the points within the sphere
+ # Convert the x, y, and z variables to numeric
+
+for (i in 1:nrow(data)) {
+  # Define the center of the sphere
+  center <- c(data[i, "x"], data[i, "y"], data[i, "z"])
+  
+  # Define the center of the sphere as a numeric vector
+  center <- unlist(data[i, c("x", "y", "z")])
+  
+  # Convert the x, y, and z variables to numeric
+  x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+  y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+  z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+  
+  # Calculate the Euclidean distance between each point and the center
+  distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+  
+  # Subset the data to only include points within the sphere
+  subset_data <- data[distances <= radius, ]
+  
+  # Calculate the sum of num values for the points within the sphere
+  sum_num <- sum(subset_data$num)
+  # Add the number of points within the sphere to the vector of counts
+  num_in_sphere[i] <- nrow(subset_data)
+  # Add the sum to the vector of sums
+  sums1 <- c(sums1, sum_num)
+}
+
+# Print the vector of sums1
+print(sums1)
+print(num_in_sphere)
+```
+
+
+```{r}
+#随机排列放到第五列
+# 新加一列
+data<-as.data.table(data)
+
+data[, sum1 := 1]
+data[, ran_num := 1]
+data[, sum2 := 1]
+# 随机排序
+rand_idx <- sample(nrow(data))
+
+#将sums1写在第五列
+data[,5]<-sums1
+
+# 将随机排序的结果写入到第六列
+data[, 6] <- data[rand_idx, 4]
+
+#求sums2,随机排序的加和
+radius <- 5
+
+# Initialize an empty vector to store the sum of num values for each sphere
+sums2 <- c()
+
+# Loop through each point and calculate the sum of num values for the points within the sphere
+ # Convert the x, y, and z variables to numeric
+
+for (i in 1:nrow(data)) {
+  # Define the center of the sphere
+  center <- c(data[i, "x"], data[i, "y"], data[i, "z"])
+  
+  # Define the center of the sphere as a numeric vector
+  center <- unlist(data[i, c("x", "y", "z")])
+  
+  # Convert the x, y, and z variables to numeric
+  x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+  y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+  z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+  
+  # Calculate the Euclidean distance between each point and the center
+  distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+  
+  # Subset the data to only include points within the sphere
+  subset_data <- data[distances <= radius, ]
+  
+  # Calculate the sum of num values for the points within the sphere
+  sum_num <- sum(subset_data$ran_num)
+  # Add the sum to the vector of sums
+  sums2 <- c(sums2, sum_num)
+}
+
+# Print the vector of sums1
+print(sums2)
+
+# 将随机排序的virusNumber和写入到第七列
+data[, 7] <- sums2
+
+# 保存新的数据
+write.table(data, "new_data.txt", sep="\t", quote=FALSE, row.names=FALSE)
+```
+
+```{r}
+# 绘制 sums1 的图形
+plot(sums1)
+# 计算 sums1 的长度并打印输出
+length(sums1)
+# 绘制 sums2 的图形
+plot(sums2)
+# 计算 sums2 的长度并打印输出
+length(sums2)
+# 打印数据框
+print(data)
+```
+
+```{r}
+# Initialize an empty vector to store the changesum values for 20 iterations
+changesum_vec <- numeric(length=20)
+
+# Initialize an empty vector to store the sum of changesum vectors for 20 iterations
+changesum_sum <- numeric(length=nrow(data))
+
+# Loop 20 times to calculate changesum for each iteration
+for (i in 1:20) { 
+  # Calculate changesum for each iteration
+  
+  # Initialize an empty vector to store the sum of num values for each sphere
+  sums2 <- c()
+
+  # Loop through each point and calculate the sum of num values for the points within the sphere
+  radius <- 5
+  for (j in 1:nrow(data)) {
+    # Define the center of the sphere
+    center <- unlist(data[j, c("x", "y", "z")])
+    
+    # Convert the x, y, and z variables to numeric
+    x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+    y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+    z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+    
+    # Calculate the Euclidean distance between each point and the center
+    distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+    
+    # Subset the data to only include points within the sphere
+    subset_data <- data[distances <= radius, ]
+    
+    # Calculate the sum of num values for the points within the sphere
+    sum_num <- sum(subset_data$ran_num)
+    
+    # Add the sum to the vector of sums
+    sums2 <- c(sums2, sum_num)
+  }
+  
+  # Calculate the changesum vector for this iteration
+  changesum <- sums2 - sums1
+  
+  # Add the changesum vector to the changesum sum vector
+  changesum_sum <- changesum_sum + changesum
+  
+  # Add the sum of changesum vector to the changesum vector
+  changesum_vec[i] <- sum(changesum)
+}
+
+# Calculate the change percentage for each sphere
+change_num <- changesum_sum / num_in_sphere
+
+# Print the change percentage for each sphere
+print(change_num)
+```
+
+```{r}
+# 找出change_num向量的最小的5%值 
+top_5_percent <- quantile(change_num,probs = 0.05, type = 1)
+# 找出change_num向量中大于前5%值的元素的索引 
+top_5_percent_indices <-which(change_num < top_5_percent)
+# 输出结果 
+print(top_5_percent_indices) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#DBscan high_mutation cluster
+
+```{r}
+#2.cluster for actual points
+# # Subset the data to include only the points with the specified indices
+# data_filter
+# data_subset <- data_filter[, c("x", "y", "z")]
+# 
+# # Plot the points with different colors for each cluster assigned by DBSCAN
+# plot(data_subset$x, data_subset$y, data_subset$z, col = dbscan_result$cluster)
+# 
+# # Perform k-means clustering on the data subset
+# kmeans_result <- kmeans(data_subset, centers = 3)
+# 
+# # Print the cluster centers
+# print(kmeans_result$centers)
+
+# Load the required package
+library(plot3D)
+
+data_filtered <- data[c(43, 106,107, 142, 144, 174, 251, 252, 253, 283, 284, 285, 286, 287, 288, 289, 322, 329, 330, 331, 352, 353, 354, 357, 358, 362, 378,384, 385, 387, 388, 389, 496, 497, 498, 511, 519, 646, 647, 648, 778, 779, 780, 793, 795, 970, 972), ]
+
+# Create a 3D scatter plot of the data with x, y, and z coordinates
+scatter3D(data_filtered$x, data_filtered$y, data_filtered$z, col = "blue")
+
+# Perform DBSCAN clustering on the data
+dbscan_result <- dbscan(data_filtered[, c("x", "y", "z")], eps = 7,MinPts = 3)
+
+dbscan_stats <- cluster.stats(dist(data_filtered[, c("x", "y", "z")]),  dbscan_result$cluster +1)
+
+# Dunn index
+dunn <- dbscan_stats$dunn
+# Calinski-Harabasz index
+ch <- dbscan_stats$ch
+# Average silhouette width
+sil <- dbscan_stats$avg.silwidth
+#Entropy index
+ent <- dbscan_stats$entropy
+
+
+
+# Add the cluster assignments to the plot
+points3D(data_filtered$x, data_filtered$y, data_filtered$z, col = dbscan_result$cluster)
+#
+
+```
+
+#Model validation
+```{r}
+
+#Model validation - find best parameter
+index <- data.frame()
+
+epsilon <- 30
+
+minpoint <- 10
+
+topnum <- 50
+
+#note that epsilon should be much bigger than minpoint, other wise if there's no ball with radius epsilon that contain minpoint, it will return warning no non-missing arguments to min; returning InfError: $ operator is invalid for atomic vectors
+
+#also epsilon shouldn't be too big
+
+for (i in 10:epsilon){
+  
+  for (j in 1:8){
+    
+    dbscan_result <- dbscan(data_filtered[, c("x", "y", "z")], eps = i,MinPts = j)
+    
+    #wss <- sum(dbscan_result$withinss)
+    
+    dbscan_stats <- cluster.stats(dist(data_filtered[, c("x", "y", "z")]),  dbscan_result$cluster +1)
+    
+    # Dunn index
+    dunn <- dbscan_stats$dunn
+    # Calinski-Harabasz index
+    ch <- dbscan_stats$ch
+    # Average silhouette width
+    sil <- dbscan_stats$avg.silwidth
+    #Entropy index
+    ent <- dbscan_stats$entropy
+    
+    index <- rbind(index, c(i, j, dunn, ch, sil, ent))
+    
+  }
+  
+}
+
+colnames(index) <- c("epsilon","minpoint","Dunn", "Calinski-Harabasz", "Average_Silhouette_Width", "Entropy")
+
+
+```
+
+
+```{r}
+
+#par(mfrow = c(2, 2))
+
+# Line chart for Dunn Index
+plot(index$Dunn, type = "l", xlab = "Observation", ylab = "Dunn Index", main = "Dunn Index",xlim = c(0, length(index$Dunn) +1), ylim = c(min(index$Dunn)*0.95, max(index$Dunn)*1.2 ))
+
+#创建表
+top_dun <- data.frame()
+
+# 标记最大值，并加进表里
+sorted <- sort(index$Dunn, decreasing = TRUE)
+top_three <- head(sorted, topnum)
+
+print(top_three)
+
+for (i in 1:length(top_three)) {
+  
+  num <- which(index$Dunn == top_three[i])
+  #text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+  
+  top_dun <- rbind(top_dun, c(i,top_three[i]) )
+}
+colnames(top_dun) <- c("K-Num", "Dunn")
+datatable(top_dun)
+
+```
+
+
+```{r}
+
+# Line chart for Calinski-Harabasz Index
+plot(index$`Calinski-Harabasz`, type = "l", xlab = "Observation", ylab = "Calinski-Harabasz Index", main = "Calinski-Harabasz Index",xlim = c(0, length(index$`Calinski-Harabasz`) +1), ylim = c(min(index$`Calinski-Harabasz`)*0.95, max(index$`Calinski-Harabasz`)*1.2 ))
+
+#创建表
+top_ch <- data.frame()
+
+# 标记最大值
+sorted <- sort(index$`Calinski-Harabasz`, decreasing = TRUE)
+top_three <- head(sorted, topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$`Calinski-Harabasz` == top_three[i])
+  #text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+  top_ch <- rbind(top_ch, c(num,top_three[i]) )
+}
+
+colnames(top_ch) <- c("K-Num", "CH")
+datatable(top_ch)
+
+```
+
+
+```{r}
+
+# Line chart for Average Silhouette Width
+plot(index$`Average_Silhouette_Width`, type = "l", xlab = "Observation", ylab = "Average Silhouette Width", main = "Average Silhouette Width",xlim = c(0, length(index$`Average_Silhouette_Width`) +1), ylim = c(min(index$`Average_Silhouette_Width`)*0.95, max(index$`Average_Silhouette_Width`)*1.2))
+
+#创建表
+top_ASW <- data.frame()
+
+# 标记最大值
+sorted <- sort(index$`Average_Silhouette_Width`, decreasing = TRUE)
+top_three <- head(sorted, topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$`Average_Silhouette_Width` == top_three[i])
+  #text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+  top_ASW <- rbind(top_ASW, c(num,top_three[i]) )
+}
+
+colnames(top_ASW) <- c("K-Num", "CH")
+datatable(top_ASW)
+
+```
+
+
+```{r}
+
+# Line chart for Entropy
+plot(index$Entropy, type = "l", xlab = "Observation", ylab = "Entropy", main = "Entropy",xlim = c(0, length(index$Entropy) +1), ylim = c(min(index$Entropy)*0.95, max(index$Entropy)*1.2))
+
+
+# 标记最大值
+sorted <- sort(index$Entropy, decreasing = FALSE)
+top_three <- head(sorted, topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$Entropy == top_three[i])
+  #text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+}
+```
+
+Dunn:the higher the better
+(well-separated and compact)
+
+CH:the higher the better
+(well-separated and compact)
+
+S:The higher the better
+(well-separated and compact)
+
+Entropy: the lower the better
+
+Wss: the lower the better
+
+weighted mean score = Dunn percentage + CH percentage + S percentage + entropy percentage
+
+```{r}
+
+D <- index$Dunn
+A <- index$`Average_Silhouette_Width`
+CH <- index$`Calinski-Harabasz`
+E <- index$Entropy
+
+#创建表
+WS <- data.frame()
+
+for (i in 1:length(D)){
+  
+  weight <- D[i]/max(D) + A[i]/max(A) + CH[i]/max(CH) + (1-E[i]/max(E))
+  
+  #WS <- rbind(WS, c(i + Kmin -1 ,weight) )
+  WS <- rbind(WS, c(i,index$epsilon[i],index$minpoint[i],weight) )
+  
+}
+
+colnames(WS) <- c("observation","epsilon","minpoint", "Weighted score")
+datatable(WS)
+
+# Line chart for WS
+#plot(x=WS$`K-Num` ,y=WS$`Weighted score`, type = "l", xlab = "K-num", ylab = "Weighted score", main = "Weighted score",xlim = c(Kmin, Kmin+length(WS$`Weighted score`)-1), ylim = c(min(WS$`Weighted score`)*0.95, max(WS$`Weighted score`)*1.2))
+
+plot(x=WS$`observation` ,y=WS$`Weighted score`, type = "l", xlab = "Observation", ylab = "Weighted score", main = "Weighted score",xlim = c(0, length(WS$`Weighted score`)+1), ylim = c(min(WS$`Weighted score`)*0.95, max(WS$`Weighted score`)*1.2))
+
+Best_K <- data.frame()
+
+# 标记最大值
+sorted <- sort(WS$`Weighted score`, decreasing = TRUE)
+top_three <- head(sorted,topnum)
+
+for (i in 1:length(WS$`Weighted score`)) {
+  num <- which(WS$`Weighted score` == top_three[i])
+  #text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  for (n in num){
+    #points(x = n +Kmin -1, y= top_three[i], col = "red", pch = 19)
+    points(x = n , y= top_three[i], col = "red", pch = 19)
+    Best_K <- rbind(Best_K, c(i,index$epsilon[n],index$minpoint[n],top_three[i]) )
+    
+    
+  }
+}
+
+colnames(Best_K) <- c("Best_descend", "epsilon","minpoint","Weighted score")
+datatable(Best_K)
+
+```
+
+
+Therefore, we choose epsilon = 21 , minpoint = 3  as our parameter in this circumstances.
+
+
+##Determine parameter
+
+For K-means method, we take k = ?
