@@ -1,59 +1,135 @@
 --- title: "zty  code" author: "Taiyuan Zhang" date: '2023-07-13' output:
 html_document ---
-```{r setup, include=FALSE} knitr::opts_chunk$set(echo = TRUE) ```
-## R Markdown
-This is an R Markdown document. Markdown is a simple formatting syntax for
-authoring HTML, PDF, and MS Word documents. For more details on using R Markdown
-see <http://rmarkdown.rstudio.com>.
-When you click the **Knit** button a document will be generated that includes
-both content as well as the output of any embedded R code chunks within the
-document. You can embed an R code chunk like this:
+
+# Line33  91 157 165
+data
+首先检查数据类型
 ```{r} 
 # Define the center of the sphere center <- c(data[i, "x"], data[i, "y"],data[i, "z"])
 # Print the center vector to check its value print(center)
 # Check the data$x, data$y, data$z vectors for non-numeric values
+library(data.table)
+data <- as.data.table(`6vxx`)
+#data就是6vxx的A chain, 972个
 print(any(!is.numeric(data$x))) 
 print(any(!is.numeric(data$y)))
 print(any(!is.numeric(data$z)))
-# Calculate the Euclidean distance between each point and the center
-distances<- sqrt((data$x - center[[1]])^2 + (data$y - center[[2]])^2 + (data$z -center[[3]])^2) 
-
+nrow(data)
+# Convert the x column to numeric, replacing non-numeric values with NA
+x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+# Check the data types of the x, y, and z columns
+class(data$x)
+class(data$y)
+class(data$z)
+#class(center)
 ```
 
-
+计算origin情况球内点的数量和点的virusNumber和
+原有问题1：center是list类，要转化为numerical类
 ```{r}
 # Define the radius of the sphere 
+#进行讨论
+# Define the radius of the sphere
 radius <- 5
 
-# Initialize an empty vector to store the sum of ran_num values for each sphere
-sums2 <- c()
+# Initialize an empty vector to store the sum of num values for each sphere
+sums1 <- c()
 
 # Initialize an empty vector to store the number of points within each sphere
 num_in_sphere <- numeric(nrow(data))
 
+# Loop through each point and calculate the sum of num values for the points within the sphere
+ # Convert the x, y, and z variables to numeric
+
 for (i in 1:nrow(data)) {
-  # Define the center of the sphere 
+  # Define the center of the sphere
   center <- c(data[i, "x"], data[i, "y"], data[i, "z"])
   
+  # Define the center of the sphere as a numeric vector
+  center <- unlist(data[i, c("x", "y", "z")])
+  
+  # Convert the x, y, and z variables to numeric
+  x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+  y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+  z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+  
   # Calculate the Euclidean distance between each point and the center
-  distances <- sqrt((data$x - center[[1]])^2 + (data$y - center[[2]])^2 + (data$z - center[[3]])^2)
+  distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
   
   # Subset the data to only include points within the sphere
   subset_data <- data[distances <= radius, ]
   
-  # Calculate the sum of ran_num values for the points within the sphere
-  sum_num <- sum(subset_data$ran_num)
-  
-  # Add the sum to the vector of sums
-  sums2 <- c(sums2, sum_num)
-  
+  # Calculate the sum of num values for the points within the sphere
+  sum_num <- sum(subset_data$num)
   # Add the number of points within the sphere to the vector of counts
   num_in_sphere[i] <- nrow(subset_data)
+  # Add the sum to the vector of sums
+  sums1 <- c(sums1, sum_num)
 }
 
-# Print the number of points within each sphere
+# Print the vector of sums1
+print(sums1)
 print(num_in_sphere)
 ```
+
+```{r}
+#随机排列放到第五列
+# 新加一列
+data[, sum1 := 1]
+data[, ran_num := 1]
+data[, sum2 := 1]
+# 随机排序
+rand_idx <- sample(nrow(data))
+
+#将sums1写在第五列
+data[,5]<-sums1
+
+# 将随机排序的结果写入到第六列
+data[, 6] <- data[rand_idx, 4]
+
+#求sums2,随机排序的加和
+radius <- 5
+
+# Initialize an empty vector to store the sum of num values for each sphere
+sums2 <- c()
+
+# Loop through each point and calculate the sum of num values for the points within the sphere
+ # Convert the x, y, and z variables to numeric
+
+for (i in 1:nrow(data)) {
+  # Define the center of the sphere
+  center <- c(data[i, "x"], data[i, "y"], data[i, "z"])
+  
+  # Define the center of the sphere as a numeric vector
+  center <- unlist(data[i, c("x", "y", "z")])
+  
+  # Convert the x, y, and z variables to numeric
+  x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+  y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+  z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+  
+  # Calculate the Euclidean distance between each point and the center
+  distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+  
+  # Subset the data to only include points within the sphere
+  subset_data <- data[distances <= radius, ]
+  
+  # Calculate the sum of num values for the points within the sphere
+  sum_num <- sum(subset_data$ran_num)
+  # Add the sum to the vector of sums
+  sums2 <- c(sums2, sum_num)
+}
+
+# Print the vector of sums1
+print(sums2)
+
+# 将随机排序的virusNumber和写入到第七列
+data[, 7] <- sums2
+
+# 保存新的数据
+write.table(data, "new_data.txt", sep="\t", quote=FALSE, row.names=FALSE)
+```
+
 
 ```{r}
 # 绘制 sums1 的图形
@@ -64,89 +140,99 @@ length(sums1)
 plot(sums2)
 # 计算 sums2 的长度并打印输出
 length(sums2)
-# 将 sums2 写入数据框的第七列
-data[, 7] <- sums2
 # 打印数据框
 print(data)
 ```
 
-<!-- Q here： --> <!-- 1.cannot only do once? --> <!-- 2.radius  really5? other
-shape? --> <!-- 3.how to do hypothesis test? -->how to represent? <----
 
-```{r} 
-##hypothesis test #how can be count as big difference
-#whether two sample from same dist? #Mann-Whitney U test 
-wilcox.test(sums1,sums2)
-#假设一，符合正态分布 #归一化
-``` 
-Till 230717: <!-- Q here： --> <!-- 1.cannot only do once? --> <!-- 2.radius
-really5? other shape? --> <!-- 3.how to do hypothesis test? -->how to represent?
-code 1.Clustering: all sphere 2.method: CLUMPS? 3.problems: 4.To do: empirical
-P-value 5.To improve: better permutation
-```{r} 
-# 创建一个空的向量，用于存储每次迭代的 changesum 
+但是只做一次sums2肯定不准确，尝试重复20次sums2。
+
+```{r}
+# Initialize an empty vector to store the changesum values for 20 iterations
 changesum_vec <- numeric(length=20)
 
-# 定义一个空向量，用于存储所有迭代的 changesum 向量的总和 
-changesum_sum <- numeric(length=972)
+# Initialize an empty vector to store the sum of changesum vectors for 20 iterations
+changesum_sum <- numeric(length=nrow(data))
 
-# 循环20次计算 changesum 
+# Loop 20 times to calculate changesum for each iteration
 for (i in 1:20) { 
-  # 计算 changesum 
-  changesum <- data$sums2 - data$sums1
+  # Calculate changesum for each iteration
   
-  # 将 changesum 添加到向量中 
-  changesum_vec[i] <- sum(changesum)
-  
-  # 将 changesum 向量添加到总和向量中 
-  changesum_sum <- changesum_sum + changesum 
-}
-#print(num_in_sphere)
-# 计算每个球对应的变化
-change_percentage <- changesum_sum / num_in_sphere
+  # Initialize an empty vector to store the sum of num values for each sphere
+  sums2 <- c()
 
-# 输出结果 
-print(change_percentage)
+  # Loop through each point and calculate the sum of num values for the points within the sphere
+  radius <- 5
+  for (j in 1:nrow(data)) {
+    # Define the center of the sphere
+    center <- unlist(data[j, c("x", "y", "z")])
+    
+    # Convert the x, y, and z variables to numeric
+    x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+    y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+    z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+    
+    # Calculate the Euclidean distance between each point and the center
+    distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+    
+    # Subset the data to only include points within the sphere
+    subset_data <- data[distances <= radius, ]
+    
+    # Calculate the sum of num values for the points within the sphere
+    sum_num <- sum(subset_data$ran_num)
+    
+    # Add the sum to the vector of sums
+    sums2 <- c(sums2, sum_num)
+  }
+  
+  # Calculate the changesum vector for this iteration
+  changesum <- sums2 - sums1
+  
+  # Add the changesum vector to the changesum sum vector
+  changesum_sum <- changesum_sum + changesum
+  
+  # Add the sum of changesum vector to the changesum vector
+  changesum_vec[i] <- sum(changesum)
+}
+
+# Calculate the change percentage for each sphere
+change_num <- changesum_sum / num_in_sphere
+
+# Print the change percentage for each sphere
+print(change_num)
 ```
 
-```{r} 
-
-
-# 找出change_percentage向量的前5%值 
-top_5_percent <- quantile(change_percentage,probs = 0.95, type = 1)
-# 找出change_percentage向量中大于前5%值的元素的索引 
-top_5_percent_indices <-which(change_percentage > top_5_percent)
+```{r}
+# 找出change_num向量的最小的5%值 
+top_5_percent <- quantile(change_num,probs = 0.05, type = 1)
+# 找出change_num向量中大于前5%值的元素的索引 
+top_5_percent_indices <-which(change_num < top_5_percent)
 # 输出结果 
 print(top_5_percent_indices) 
 ```
-存在一定的集聚性 
+发现序号上(1D),也存在一定的集聚性
 
 ```{r} 
-#尝试可视化 #先用DBSCAN聚类 # 导入dbscan包 
+#1.cluster for indice
+# Import the dbscan package
 library(dbscan)
-# 导入dbscan包 library(dbscan)
-# 创建一个数据框架，存储所有数字 
-mydf <- data.frame(x = c(10, 12, 72, 73, 74, 82, 84, 92, 300,
-301, 302, 327, 328, 367, 368, 369, 372, 409, 411, 412, 434, 435, 592, 602, 603,
-604, 618, 649, 670, 671, 672, 725, 727, 729, 738, 770, 772, 850, 857, 858, 859,
-893, 905, 951, 952, 956, 957, 958))
-# 使用dbscan()函数将数据分成若干个簇 
+
+# Create a data frame to store all the numbers
+mydf <- data.frame(x = c(43, 106,107, 142, 144, 174, 251, 252, 253, 283, 284, 285, 286, 287, 288, 289, 322, 329, 330, 331, 352, 353, 354, 357, 358, 362, 378,384, 385, 387, 388, 389, 496, 497, 498, 511, 519, 646, 647, 648, 778, 779, 780, 793, 795, 970, 972))
+
+# Use the dbscan() function to cluster the data into several clusters
 dbscan_result <- dbscan(mydf, eps = 10, minPts = 4)
-# 输出结果 
-dbscan_result$cluster
+
+# Print the cluster assignments for each point
+print(dbscan_result$cluster)
 ```
 
 ```{r} 
 #可视化？ 
 #将这些求画出来 # 从数据框架中筛选出指定序号的行 
-data_filtered <- data[c(10, 12, 72, 73,
-74, 82, 84, 92, 300, 301, 302, 327, 328, 367, 368, 369, 372, 409, 411, 412, 434,
-435, 592, 602, 603, 604, 618, 649, 670, 671, 672, 725, 727, 729, 738, 770, 772,
-850, 857, 858, 859, 893, 905, 951, 952, 956, 957, 958), ]
+data_filtered <- data[c(43, 106,107, 142, 144, 174, 251, 252, 253, 283, 284, 285, 286, 287, 288, 289, 322, 329, 330, 331, 352, 353, 354, 357, 358, 362, 378,384, 385, 387, 388, 389, 496, 497, 498, 511, 519, 646, 647, 648, 778, 779, 780, 793, 795, 970, 972), ]
 # 输出结果 data_filtered
-```
 
-```{r}
 library(dbscan)
 library(rgl)
 library(scatterplot3d)
@@ -177,38 +263,39 @@ for (i in 1:length(unique(labels))) {
     rgl::sphere3d(x0, y0, z0, radius = 5, alpha = 0.5, color=colors[labels+1])
   }
 }
+#红色的属于分类失败
 ```
 
-Till 230717: <!-- Q here： --> <!-- 1.cannot only do once? --> <!-- 2.radius
-really5? other shape? --> <!-- 3.how to do hypothesis test? -->how to represent?
-code 1.Clustering: all sphere 2.method: CLUMPS? 3.problems: 4.To do: empirical
-P-value 5.To improve: better permutation POSSILBLE improve: use LINCLUST
-Q: #permutation test?
-Conclude: Possible clustering method: 1.basic k-means;basic DBSCAN 2.draw sphere 3.feature vector
+```{r}
+#2.cluster for actual points
+# # Subset the data to include only the points with the specified indices
+# data_filter
+# data_subset <- data_filter[, c("x", "y", "z")]
+# 
+# # Plot the points with different colors for each cluster assigned by DBSCAN
+# plot(data_subset$x, data_subset$y, data_subset$z, col = dbscan_result$cluster)
+# 
+# # Perform k-means clustering on the data subset
+# kmeans_result <- kmeans(data_subset, centers = 3)
+# 
+# # Print the cluster centers
+# print(kmeans_result$centers)
 
-#0718
-correlation analysis:
-refer1: interactions among proteins can be inferred from exploring spatial correlation of binding sites.
+# Load the required package
+library(plot3D)
 
-Achieve: exploring spatial correlation of binding sites to understand the interaction of protein
+# Create a 3D scatter plot of the data with x, y, and z coordinates
+scatter3D(data_filtered$x, data_filtered$y, data_filtered$z, col = "blue")
 
-Method: 
-1.Data exploration:
-chi-square test: significance result :observed greater than expected overlaps
-Caused by three data artifacts:
-1.heterogeneity of the genome (simpson's paradox)
-2.experimental artifact
-3.sheer size of genome
+# Perform DBSCAN clustering on the data
+dbscan_result <- dbscan(data_filtered[, c("x", "y", "z")], eps = 7, minPts = 3)
 
-refer 3:
-long-range correlations
-demonstrate: encoded in native topology of the protein
-conduct: scaling analysis on the size dependence of the slowest vibration mode, average path length, and modularity
-For: structure prediction, multi-scale molecular simulations, and the design of molecular machines
+# Add the cluster assignments to the plot
+points3D(data_filtered$x, data_filtered$y, data_filtered$z, col = dbscan_result$cluster)
+#
+```
 
-Method: ENM:If an ENM can successfully reproduce long-range correlations in the fluctuations of the native proteins, then it can be concluded that the critical dynamics of proteins is encoded by the local contacts in the native structures.(WHY?????)
-
-
-
-
-
+719：
+To do:
+1. better present result
+2.repeat to find radius
