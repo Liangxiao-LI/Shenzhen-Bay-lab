@@ -90,8 +90,14 @@ Method 1 : 2 sample t test
 
 Caculate each dimension's mean and standard error
 
+mean
 ```{r, echo=FALSE}
 apply(sub_data,2,mean)
+
+```
+
+standard error
+```{r}
 apply(sub_data,2,sd)
 ```
 
@@ -100,7 +106,7 @@ apply(sub_data,2,sd)
 H0 : equal mean
 H1 : not equal mean
 
-if p-value small, then 2 covariates has significant difference between mean and standard error, which means it requires normalization.(scale)
+if p-value small, then 2 covariates has significant difference between mean, which means it requires normalization.(scale)
 
 
 ```{r, echo=FALSE}
@@ -158,7 +164,7 @@ Therefore, we need to do normalization
 
 Clustering
 
-```{r,echo=FALSE}
+```{r}
 
 #抽提坐标数据
 xyz<-data2[,c("X","Y","Z")]
@@ -170,6 +176,19 @@ feature_vector <- cbind(xyz_norm, data2$virusPercent)
 set.seed(123)
 
 ```
+
+check whether need normalizing xyz with virus percent.
+
+```{r}
+
+t.test(feature_vector[, 1], feature_vector[, 4])
+t.test(feature_vector[, 2], feature_vector[, 4])
+t.test(feature_vector[, 3], feature_vector[, 4])
+
+
+```
+
+Therefore no need to scale with virus percent again.
 
 Model validation
 ```{r}
