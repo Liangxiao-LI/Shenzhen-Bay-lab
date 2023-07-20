@@ -52,7 +52,7 @@ Load data with spatial coordinates and mutation rates
 #data<-as.data.frame(read.csv("data1.csv"))
 
 #Xiao
-#setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
 data <- read_excel("6vxx_variants.xls")
 
 
@@ -71,7 +71,7 @@ log_virus_percent <- log(data2$virusPercent)
 #Pipe
 #data <- read.csv("data1.csv")
 #Xiao
-#setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
 data <- read_excel("6vxx_variants.xls")
 
 sub_data<-data[1:972,c("X","Y","Z","virusPercent")]
@@ -90,8 +90,14 @@ Method 1 : 2 sample t test
 
 Caculate each dimension's mean and standard error
 
+mean
 ```{r, echo=FALSE}
 apply(sub_data,2,mean)
+
+```
+
+standard error
+```{r}
 apply(sub_data,2,sd)
 ```
 
@@ -100,7 +106,7 @@ apply(sub_data,2,sd)
 H0 : equal mean
 H1 : not equal mean
 
-if p-value small, then 2 covariates has significant difference between mean and standard error, which means it requires normalization.(scale)
+if p-value small, then 2 covariates has significant difference between mean, which means it requires normalization.(scale)
 
 
 ```{r, echo=FALSE}
@@ -158,7 +164,7 @@ Therefore, we need to do normalization
 
 Clustering
 
-```{r,echo=FALSE}
+```{r}
 
 #抽提坐标数据
 xyz<-data2[,c("X","Y","Z")]
@@ -171,6 +177,19 @@ set.seed(123)
 
 ```
 
+check whether need normalizing xyz with virus percent.
+
+```{r}
+
+t.test(feature_vector[, 1], feature_vector[, 4])
+t.test(feature_vector[, 2], feature_vector[, 4])
+t.test(feature_vector[, 3], feature_vector[, 4])
+
+
+```
+
+Therefore no need to scale with virus percent again.
+
 Model validation
 ```{r}
 
@@ -178,12 +197,12 @@ Model validation
 index <- data.frame()
 
 #标记最大几个值
-topnum = 30
+topnum = 3
 
 #K-num iteration
 Kmin <- 3
-Kmax <- 150
-iteration <- 20 #iteration number per k num 
+Kmax <- 8
+iteration <- 5 #iteration number per k num 
 
 for (i in Kmin:Kmax) {
   
@@ -381,9 +400,6 @@ A <- index$`Average_Silhouette_Width`
 CH <- index$`Calinski-Harabasz`
 E <- index$Entropy
 Wss <- index$Wss
-
-
-
 
 
 #创建表

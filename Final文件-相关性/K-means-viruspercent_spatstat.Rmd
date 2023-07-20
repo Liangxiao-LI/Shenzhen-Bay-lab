@@ -1,0 +1,82 @@
+---
+title: "Spatstat-correlation"
+author: "Liangxiao LI"
+date: "2023-07-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(spatstat)
+library(readxl)
+```
+
+#Load data
+
+```{r}
+#Xiao
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+data <- read_excel("6vxx_variants.xls")
+
+data<-data[1:972,c("X","Y","Z","virusPercent")]
+
+```
+
+
+
+
+```{r}
+
+k_num <- 5
+ite <- 20
+
+feature_vector <- data[,c("virusPercent")]
+kmeans_result <- kmeans(feature_vector, centers = k_num, nstart = ite)
+
+# Sort the cluster factor in ascending order of feature vector values
+sorted_labels <- order(kmeans_result$centers)
+kmeans_result$cluster <- factor(kmeans_result$cluster, levels = sorted_labels)
+
+# Combine feature vector and cluster assignments
+result <- cbind(feature_vector, kmeans_result$cluster)
+
+# Plot the data with sorted cluster labels
+
+result <- cbind(feature_vector,kmeans_result$cluster)
+plot(result)
+
+```
+
+
+
+
+```{r}
+myppp <- ppp(x = data$X, y = data$Y, z = data$Z, marks = mydata$m, check = FALSE) #创建点模式对象
+```
+
+
+
+```{r}
+# Generate some sample data
+set.seed(123)
+data <- data.frame(x = rnorm(100), y = rnorm(100))
+k_num <- 3
+ite <- 20
+feature_vector <- data[,c("x")]
+kmeans_result <- kmeans(feature_vector, centers = k_num, nstart = ite)
+
+# Sort the cluster factor in ascending order of feature vector values
+sorted_labels <- order(kmeans_result$centers)
+kmeans_result$cluster <- factor(kmeans_result$cluster, levels = sorted_labels)
+
+# Combine feature vector and cluster assignments
+result <- cbind(feature_vector, kmeans_result$cluster)
+
+# Plot the data with sorted cluster labels
+plot(feature_vector, col = kmeans_result$cluster)
+```
+
