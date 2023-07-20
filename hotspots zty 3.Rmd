@@ -1,0 +1,280 @@
+<<<<<<< HEAD
+--- title: "zty  code" author: "Taiyuan Zhang" date: '2023-07-13' output:
+html_document ---
+
+# Line33  91 157 165
+data
+首先检查数据类型
+```{r} 
+# Define the center of the sphere center <- c(data[i, "x"], data[i, "y"],data[i, "z"])
+# Print the center vector to check its value print(center)
+# Check the data$x, data$y, data$z vectors for non-numeric values
+library(data.table)
+data <- as.data.table(`6vxx`)
+#data就是6vxx的A chain, 972个
+print(any(!is.numeric(data$x))) 
+print(any(!is.numeric(data$y)))
+print(any(!is.numeric(data$z)))
+nrow(data)
+# Convert the x column to numeric, replacing non-numeric values with NA
+x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+# Check the data types of the x, y, and z columns
+class(data$x)
+class(data$y)
+class(data$z)
+#class(center)
+```
+
+计算origin情况球内点的数量和点的virusNumber和
+原有问题1：center是list类，要转化为numerical类
+改进0720：寻找最佳参数
+在radius等于5时，平均球内数为3.504115
+```{r}
+# Define a vector of radii
+radii <- c(5, 6,7,8,9,10)
+
+# Initialize an empty list to store the sums1 vectors for each radius
+sums1_list <- list()
+num_in_sphere_list<-list()
+
+# Loop through each radius and calculate the sum of num values for the points within the sphere
+for (r in radii) {
+  # Initialize an empty vector to store the sum of num values for each sphere
+  sums1 <- c()
+  
+  # Initialize an empty vector to store the number of points within each sphere
+  num_in_sphere <- numeric(nrow(data))
+  
+  # Loop through each point and calculate the sum of num values for the points within the sphere
+  for (i in 1:nrow(data)) {
+    # Define the center of the sphere
+    center <- c(data[i, "x"], data[i, "y"], data[i, "z"])
+    
+    # Define the center of the sphere as a numeric vector
+    center <- unlist(data[i, c("x", "y", "z")])
+    
+    # Convert the x, y, and z variables to numeric
+    x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+    y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+    z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+    
+    # Calculate the Euclidean distance between each point and the center
+    distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+    
+    # Subset the data to only include points within the sphere
+    subset_data <- data[distances <= r, ]
+    
+    # Calculate the sum of num values for the points within the sphere
+    sum_num <- sum(subset_data$num)
+    # Add the number of points within the sphere to the vector of counts
+    num_in_sphere[i] <- nrow(subset_data)
+    # Add the sum to the vector of sums
+    sums1 <- c(sums1, sum_num)
+  }
+  
+  # Add the sums1 vector to the list for the current radius
+  sums1_list[[as.character(r)]] <- sums1
+  
+  # Print the vector of num_in_sphere for the current radius
+  #cat("Number of points within sphere (radius =", r, "):", num_in_sphere, "\n")
+  # Print the mean of num_in_sphere for the current radius
+  cat("Mean number of points within sphere (radius =", r, "):", mean(num_in_sphere), "\n\n")
+}
+num_in_sphere_list[[as.character(r)]] <- num_in_sphere
+# Print the sums1 vectors for each radius in the list
+# for (r in radii) {
+#   cat("Radius", r, ": ", sums1_list[[as.character(r)]], "\n")
+# }
+```
+
+尝试重复20次sums2。
+```{r}
+## Initialize an empty vector to store the sum of changesum vectors for 20 iterations
+changesum_sumlist <- list()
+
+# Initialize an empty list to store the num_in_sphere vectors for each radius
+num_in_sphere_list <- list()
+change_num_list <- list()
+
+# Define a vector of radii
+radii <- c(5, 6, 7, 8, 9, 10)
+
+# Loop through each radius
+for (r in radii) {
+  # Initialize an empty list to store the sums2 vectors for each iteration
+  sums2_list <- list()
+  
+  # Initialize an empty vector to store the changesum values for 20 iterations
+  changesum_vec <- numeric(length = 20)
+  
+  # Initialize an empty vector to store the num_in_sphere values for each iteration
+  num_in_sphere_vec <- numeric(length = nrow(data))
+  
+  # Loop 20 times to calculate changesum for each iteration
+  for (i in 1:20) { 
+    # Initialize an empty vector to store the sums2 values for each point
+    sums2 <- numeric(length = nrow(data))
+    
+    # Loop through each point and calculate the sum of ran_num values for the points within the sphere
+    for (j in 1:nrow(data)) {
+      # Define the center of the sphere
+      center <- unlist(data[j, c("x", "y", "z")])
+      
+      # Convert the x, y, and z variables to numeric
+      x <- ifelse(is.na(as.numeric(data$x)), NA, as.numeric(data$x))
+      y <- ifelse(is.na(as.numeric(data$y)), NA, as.numeric(data$y))
+      z <- ifelse(is.na(as.numeric(data$z)), NA, as.numeric(data$z))
+      
+      # Calculate the Euclidean distance between each point and the center
+      distances <- sqrt((x - center[1])^2 + (y - center[2])^2 + (z - center[3])^2)
+      
+      # Subset the data to only include points within the sphere
+      subset_data <- data[distances <= r, ]
+      
+      # Calculate the sum of ran_num values for the points within the sphere
+      sum_num <- sum(subset_data$ran_num)
+      
+      # Add the sum to the vector of sums2
+      sums2[j] <- sum_num
+      
+      # Count the number of points within the sphere
+      num_in_sphere_vec[j] <- nrow(subset_data)
+    }
+    
+    # Add the sums2 vector to the list for the current iteration
+    sums2_list[[as.character(i)]] <- sums2
+    
+    # Calculate the changesum vector for this iteration
+    changesum <- sums2 - sums1_list[[as.character(r)]]
+    
+    # Add the changesum vector to the changesum sum vector
+    changesum_sumlist[[as.character(r)]] <- if (i == 1) changesum else changesum_sumlist[[as.character(r)]] + changesum
+    
+    # Add the sum of changesum vector to the changesum vector
+    changesum_vec[i] <- sum(changesum)
+  }
+  
+  # Store the num_in_sphere vector for this radius
+  num_in_sphere_list[[as.character(r)]] <- num_in_sphere_vec
+  
+  # Calculate the mean of the changesum vectors for this radius
+  mean_changesum <- mean(changesum_vec)
+  
+  # Calculate the mean of the num_in_sphere vector for this radius
+  mean_num_in_sphere <- mean(num_in_sphere_list[[as.character(r)]], na.rm = TRUE)
+  
+  # Calculate the change percentage for this radius for each point
+  change_num <- changesum_sumlist[[as.character(r)]] / (num_in_sphere_list[[as.character(r)]] * 20)
+  change_num_list[[as.character(r)]] <- change_num
+  # Print the mean change percentage for this radius
+  cat("Radius", r, ": Mean change num = ", mean(change_num, na.rm = TRUE), "\n")
+  
+  # Print the change_num vector for each point
+  #print(change_num)
+   # Find the top 5% value of the change_num vector
+  top_5_percent <- quantile(change_num, probs = 0.05, type = 1)
+  
+  # Find the indices of the values in the change_num vector that are less than the top 5% value
+  top_5_percent_indices <- which(change_num < top_5_percent)
+  
+  # Print the indices
+
+  cat("Radius", r, ": Top 5% indices = ", top_5_percent_indices, "\n")
+# # Loop through each top 5% index and extract the corresponding row from data
+#   for (index in top_5_percent_indices) {
+#     data_filtered <- data[c(index), ]
+#     
+#     # Print the filtered data
+#     cat("Radius", r, ": Filtered data for index", index, ":\n")
+#     #print(data_filtered)
+#  }
+}
+#problem:too much for one loop
+```
+  # Extract the corresponding rows from data and store在循环完成后，我们遍历每个radius并提取相应的筛选结果。我们可以使用一个for循环来遍历每个radius，然后从`top_5_percent_indices`中提取对应的行，并将它们存储在`data_filtered_list`中的相应位置。以下是修改后的代码：
+
+```{r}
+data_filtered_list <- list()
+# Loop through each radius and extract the corresponding rows from data
+for (r in radii) {
+  # Extract the indices of the filtered rows for this radius
+  top_5_percent_indices <- which(change_num_list[[as.character(r)]] < quantile(change_num_list[[as.character(r)]], probs = 0.05, type = 1))
+  
+  # Extract the filtered data for this radius and store in data_filtered
+  data_filtered <- data[top_5_percent_indices, ]
+  
+  # Store data_filtered in the data_filtered_list
+  data_filtered_list[[as.character(r)]] <- data_filtered
+}
+
+# Print data_filtered_list
+print(data_filtered_list)
+```
+发现序号上(1D),也存在一定的集聚性
+并且不同的radius找出的序号有相似性
+```{r}
+#2.cluster for actual points
+library(plot3D)
+library(dbscan)
+
+# Define a vector of radii
+radii <- c(5, 6, 7, 8, 9, 10)
+
+# Loop through each radius
+for (r in radii) {
+  # Extract the filtered data for this radius
+  data_filtered <- data_filtered_list[[as.character(r)]]
+  
+  # Perform DBSCAN clustering on the data
+  dbscan_result <- dbscan(data.frame(data_filtered$x, data_filtered$y, data_filtered$z), eps = 7, minPts = 5)
+  
+  # Create a 3D scatter plot of the data with cluster assignments
+  scatter3D(data_filtered$x, data_filtered$y, data_filtered$z, col = dbscan_result$cluster)
+  
+  # Add a title to the plot
+  title(main = paste("DBSCAN clustering for radius =", r))
+}
+```
+#0区cluster都是noise point
+```{r}
+# #打印出相关点的3D坐标
+library(dbscan)
+
+# Define a vector of radii
+radii <- c(5, 6, 7, 8, 9, 10)
+
+# Loop through each radius
+for (r in radii) {
+  # Extract the filtered data for this radius
+  data_filtered <- data_filtered_list[[as.character(r)]]
+  
+  # Perform DBSCAN clustering on the data
+  dbscan_result <- dbscan(data.frame(data_filtered$x, data_filtered$y, data_filtered$z), eps = 7, minPts = 5)
+  
+  # Get the cluster assignments for each point
+  clusters <- dbscan_result$cluster
+  
+  # Create a list of groups
+  groups <- split(data_filtered, f = clusters)
+  
+  # Remove empty groups
+  groups <- groups[sapply(groups, nrow) > 0]
+  
+  # Print the groups for this radius
+  cat("Radius", r, ":\n")
+  for (i in seq_along(groups)) {
+    cat("Cluster", i, ":\n")
+    print(groups[[i]])
+    cat("\n")
+  }
+}
+```
+#结果：group1 散点，无法成团
+#group2-9:成团点
+
+
+719：
+To do:
+1. better present result
+2.repeat to find radius
+ 
