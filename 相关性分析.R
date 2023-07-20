@@ -50,7 +50,7 @@ library(spdep)
 library(sp)
 # 导入数据
 data <- read.csv("data1.csv")
-data2<-data[1:972, c("X", "Y", "Z")]
+data2<-data[1:972, c("X", "Y", "Z","virusPercent")]
 
 set.seed(123)
 # 提取 x、y、z 列
@@ -107,9 +107,60 @@ ggplot(as.data.frame(as.table(dist_manhattan)), aes(Var1, Var2, fill = Freq)) +
 
 
 # 构建空间点对象
-pts <- SpatialPoints(coords)
+#pts <- SpatialPoints(coords)
 
 # 定义插值参数
-idw <- gstat::idw(value ~ 1, pts, nmax = 10, idp = 2)
+#idw <- gstat::idw(value ~ 1, pts, nmax = 10, idp = 2)
 
 
+#探究每个点周围存在的其他突变点的个数和该点突变频率之间的关系
+
+#构建空间点对象
+library(sp)
+coords <- cbind(data2$X, data2$Y, data2$Z)
+pts <- SpatialPoints(coords)
+
+#计算点之间的距离
+library(spdep)
+dist_mat <- nbdists(pts)
+
+# 定义半径范围
+radius_range <- seq(0.1, 1, by = 0.1) # 从0.1到1，每次增加0.1
+
+# 计算每个半径下的相邻点个数
+neighbours_list <- lapply(radius_range, function(radius) {
+  neighbours <- apply(dist_mat, 1, function(x) sum(x <= radius))
+  return(neighbours)
+})
+
+# 绘制相邻点个数随半径变化的折线图
+library(ggplot2)
+# 整理数据
+df <- data.frame(radius = rep(radius_range, each = nrow(data2)),
+                 neighbours = unlist(neighbours_list),
+                 freq = rep(data2$virusPercent, length(radius_range)))
+
+# 绘制图形
+library(ggplot2)
+ggplot(df, aes(x = radius, y = neighbours, color = freq)) +
+  geom_line() +
+  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.1)) +
+  labs(x = "Radius", y = "Neighbours", color = "Mutation Frequency")
+
+
+# 绘制相邻点个数随半径变化的折线图
+library(ggplot2)
+df <- data.frame(radius = rep(radius_range, each = nrow(data2)),
+                 neighbours = unlist(neighbours_list),
+                 freq = rep(data2$virusPercent, times = length(radius_range)))
+ggplot(df, aes(x = radius, y = neighbours, group = freq)) +
+  geom_line(aes(color = freq)) +
+  scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.1)) +
+  labs(x = "Radius", y = "Neighbours", color = "Mutation Frequency")
+
+#确定每个点周围存在的其他突变点的个数
+radius<-10
+neighbours_1 <- apply(dist_mat, 1, function(x) sum(x <= radius))
+
+#探究点周围突变个数和突变频率之间的关系
+plot(neighbours_1, data2$virusPercent)
