@@ -27,8 +27,6 @@ data<-data[1:972,c("X","Y","Z","virusPercent")]
 ```
 
 
-
-
 ```{r}
 
 k_num <- 5
@@ -55,28 +53,41 @@ plot(result)
 
 
 ```{r}
-myppp <- ppp(x = data$X, y = data$Y, z = data$Z, marks = mydata$m, check = FALSE) #创建点模式对象
+myppp <- ppp(x = data$X, y = data$Y, z = data$Z, marks = kmeans_result$cluster, check = FALSE) #创建点模式对象
+```
+
+```{r}
+myK <- Kcross(myppp, myppp$marks) #计算不同标记值之间的K函数值
+plot(myK, main = "Kcross Function", fvlabels = levels(myppp$marks))
 ```
 
 
 
 ```{r}
-# Generate some sample data
-set.seed(123)
-data <- data.frame(x = rnorm(100), y = rnorm(100))
-k_num <- 3
-ite <- 20
-feature_vector <- data[,c("x")]
-kmeans_result <- kmeans(feature_vector, centers = k_num, nstart = ite)
+mypcf <- pcf(myppp) #计算点模式对象的空间自相关函数
+plot(mypcf, main = "Pair Correlation Function") #绘制空间自相关函数图
+```
 
-# Sort the cluster factor in ascending order of feature vector values
-sorted_labels <- order(kmeans_result$centers)
-kmeans_result$cluster <- factor(kmeans_result$cluster, levels = sorted_labels)
+```{r}
+library(spatstat)
+myppp <- ppp(x = data$X, y = data$Y, z = data$Z, marks = result[,2], check = FALSE) #创建点模式对象
+myppp$marks <- cutree(hclust(dist(myppp$marks)), k = 5) #按照m的值进行聚类，分为3类，并将聚类结果赋值为点模式对象的marks属性
 
-# Combine feature vector and cluster assignments
-result <- cbind(feature_vector, kmeans_result$cluster)
+myK <- Kcross(myppp, myppp$marks) #计算不同标记值之间的K函数值
+plot(myK, main = "Kcross Function", fvlabels = levels(myppp$marks))
+```
 
-# Plot the data with sorted cluster labels
-plot(feature_vector, col = kmeans_result$cluster)
+```{r}
+# Create a sample point pattern object with two mark types
+library(spatstat)
+mydata <- data.frame(x = runif(100), y = runif(100), z = runif(100), mark = factor(sample(1:2, 100, replace = TRUE)))
+myppp <- ppp(x = mydata$x, y = mydata$y, z = mydata$z, marks = mydata$mark, check = FALSE)
+
+# Compute the K-cross function
+myK <- Kcross(myppp, myppp$marks)
+
+# Plot the K-cross function
+plot(myK, main = "K-cross Function")
+
 ```
 
