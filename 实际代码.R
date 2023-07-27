@@ -871,3 +871,86 @@ if(mean(p_v) < alpha){
   
   fig
 }
+
+
+# 计算原始聚类结果中每个聚类的均值
+orig_clusters <- kmeans(new_data, 20)
+n_permutations <- 1000
+data3<-data[1:972,c("X","Y","Z","virusPercent")]
+
+# 初始化向量来保存每次重排后的最高平均值
+m <- 100
+# 存储每个聚类的p-value
+n_cluster<-length(unique(orig_clusters$cluster)) 
+p_values <- matrix(NA, nrow=n_cluster, ncol=m)
+p_values_1 <- matrix(NA, nrow = n_cluster, ncol = m)
+# 存储p-value小于0.05的聚类的索引
+significant_clusters <- c()
+
+for (i in 1:n_cluster) {
+  # 确定当前聚类的高频区域
+  high_freq_cluster <- i
+  
+  # 计算当前聚类的平均突变频率
+  orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)[high_freq_cluster]
+  
+  # 初始化向量来保存每次重排后的最高平均值
+  max_means <- rep(NA, n_permutations)
+  
+  for (u in 1:m){
+    for (j in 1:n_permutations) {
+      perm_data <- data3
+      perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
+      mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
+      sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
+      # 对重排后的数据进行聚类
+      perm_clusters <- kmeans(sta_scale, n_cluster)
+      
+      # 计算每个聚类的平均突变频率
+      perm_means <- tapply(new_data$mutation, perm_clusters$cluster, mean)
+      
+      # 保存最高平均值
+      max_means[j] <- max(perm_means)
+    }
+    
+    # 计算p-value
+    rank <- sum(max_means >= orig_means) / n_permutations
+    p_value <- min(rank, 1-rank)
+    p_value2 <- 2 * (1 - pnorm(abs(rank - 0.5) * sqrt(n_permutations / 12)))
+    p_values[i,u] <- p_value
+    p_values_1[i,u]<- p_value2
+  }
+}
+
+for (i in 1:n_cluster){
+  # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
+  if (mean(p_value[i,]) < 0.05 && mean(p_values_1[i,] < 0.05)) {
+    significant_clusters <- c(significant_clusters, i)
+  }
+}
+
+# 初始化三维散点图
+fig <- plot_ly() %>%
+  add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points")
+
+# 循环遍历每个聚类
+colors <- heat.colors(n_cluster)
+for (i in 1:n_cluster){
+  # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
+  if (mean(p_value[i,]) < 0.05 && mean(p_values_1[i,] < 0.05)) {
+    # 提取属于当前聚类的数据点的索引
+    cluster_points <- which(orig_clusters$cluster == i)
+    # 提取属于当前聚类的数据点的坐标
+    cluster_coordinates <- new_data[cluster_points, c("x", "y", "z")]
+    # 为聚类指定颜色
+    color <- color[i]
+    # 在三维散点图中添加聚类
+    fig <- fig %>% add_trace(data = cluster_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i), marker = list(color = color))
+  }
+}
+
+# 设定散点图的布局
+fig <- fig %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+
+# 显示散点图
+fig
