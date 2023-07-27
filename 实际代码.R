@@ -164,7 +164,7 @@ hist(feature_vector[, 3])      # 绘制z_norm列的直方图
 library(ks)
 
 # 对比前后x列数据的分布
-ks.test(data2[, 1], feature_vector[, 1])  # 进行Kolmogorov-Smirnov检验，比较x列的分布
+ks.test(data2[, "X"], feature_vector[, "X"])  # 进行Kolmogorov-Smirnov检验，比较x列的分布
 
 # 对比前后y列数据的分布
 ks.test(data2[, 2], feature_vector[, 2])  # 进行Kolmogorov-Smirnov检验，比较y列的分布
@@ -207,28 +207,6 @@ ks.test(data2[, 3], feature_vector[, 3])  # 进行Kolmogorov-Smirnov检验，比
 #使得每个维度的数据具有相同的尺度和范围。
 #在标准化处理后，坐标值的数值类型和数值特征都没有发生变化
 
-#在三维空间中，距离到原点的距离相同的点可能处在空间中不同位置，
-#这可能会导致将x，y，z三个变量合并为一个欧几里得距离变量时出现问题。
-#为了解决这个问题，可以考虑使用一些附加信息来区分距离相同的点。
-#例如，可以使用每个点的坐标信息和密度信息来区分距离相同的点。
-#具体来说，可以将每个点的坐标信息和密度信息合并为一个新的变量，并将其用于聚类分析。
-#其中，密度信息可以使用核密度估计方法（例如基于高斯核函数的密度估计）来计算
-
-# 计算每个点的密度
-library(kernSmooth)
-dens <- bkde3D(data2[,c("X", "Y", "Z")], bandwidth = c(0.5, 0.5, 0.5))$fhat  # 使用基于核函数的密度估计方法计算密度
-#kde()函数用于计算基于高斯核函数的密度估计，estimate属性用于提取密度估计值，
-#$运算符用于提取密度估计值。这样可以计算每个点的密度，并将其保存为一个新的变量
-data2$density <- dens  # 将密度保存为一个新的变量
-
-# 计算每个点的密度
-library(KernSmooth)
-dens <- bkde3D(data[,c("x", "y", "z")], bandwidth = c(0.5, 0.5, 0.5))$fhat  # 使用基于核函数的密度估计方法计算密度
-data$density <- dens  # 将密度保存为一个新的变量
-
-# 合并坐标信息和密度信息
-data_xyzd <- data[,c("x", "y", "z", "density")]
-
 #从密度图中观察密度曲线的形状和位置来判断标准化前后数据的分布差异性
 library(ggplot2)
 library(gridExtra)
@@ -268,11 +246,6 @@ grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 2, ncol = 3)
 #并且在样本量较大时可能会拒绝原假设。此外，KS检验可能会检测到一些细微的差异，这些差异可能在实际分析中并不重要。
 #因此，还可以使用其他的检验方法，例如Anderson-Darling检验或Chi-squared检验等，以进一步探究数据的分布是否相似
 
-# 创建三维多变量密度图
-library(scatterplot3d)
-s3d <- scatterplot3d(xyz, type = "h", angle = 55)
-s3d$contour3d(density(xyz))
-
 # 循环绘制所有的二维多变量密度图
 # 标准化前的二维密度图
 library(ggplot2)
@@ -308,32 +281,6 @@ p6 <- ggplot(feature_vector, aes(Y, Z)) +
 
 # 将六张图合并为两行三列,形状，位置，峰度和偏度
 grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 2, ncol = 3)
-
-#绘制三维多变量密度图
-library(plotly)
-set.seed(123)
-
-# 计算密度估计
-dens <- density(data2[, c("X", "Y", "Z")], n = 50)
-
-# 创建3D密度图
-p <- plot_ly(x = dens$x, y = dens$y, z = dens$z, 
-             type = "scatter3d", mode = "none",
-             opacity = 0.5, colorscale = "Blues") %>%
-  add_surface(z = dens$z, surfacecolor = dens$z,
-              contours = list(z = list(show = TRUE, usecolormap = TRUE,
-                                       highlightcolor="#ff0000",
-                                       project=list(z=TRUE))))
-
-
-# 调整3D密度图的样式
-p <- p %>% layout(scene = list(aspectmode = "manual",
-                               aspectratio = list(x=1, y=1, z=1),
-                               xaxis = list(title = "X"),
-                               yaxis = list(title = "Y"),
-                               zaxis = list(title = "Z")))
-# 打印图形
-print(p)
 
 #将坐标和频率转化到同一尺度下
 #将不同尺度的数据转化到同一尺度可以帮助我们消除不同类型的数据之间的差异，
@@ -384,6 +331,8 @@ hist(scale_vector[,4])
 
 # 对比前后突变频率的分布
 ks.test(data2[, 4], scale_vector[, 4])  # 进行Kolmogorov-Smirnov检验，比较z列的分布
+duplicated(data2[,4])
+table(data2[,4])
 
 #标准化处理可以将不同特征的数据转化到相同的尺度和分布范围内，
 #消除不同特征之间的单位和量纲差异。
@@ -717,11 +666,12 @@ print(cluster_data)
 
 
 
-
-#Permutation法(均值假设检验)
+#Permutation法(均值假设检验+特征放缩处理)
 # 计算原始聚类结果中每个聚类的均值
-orig_means <- tapply(data2[, ncol(data2)], orig_clusters$cluster, mean)
-
+orig_clusters <- kmeans(new_data, 20)
+orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)
+n_permutations <- 1000
+data3<-data[1:972,c("X","Y","Z","virusPercent")]
 # 确定突变高发区
 high_freq_cluster <- which.max(orig_means)
 
@@ -732,30 +682,26 @@ p_v_1<-numeric(n_permutations)
 
 # 进行一次1000次重排
 for (i in 1:n_permutations) {
-  # 对突变概率进行重排
-  perm_data[,ncol(data2)] <- sample(data2[,ncol(data2)], replace=FALSE)
-  
+  perm_data <- data3
+  perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
+  mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
+  sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
   # 对重排后的数据进行聚类
-  perm_clusters <- kmeans(cbind(xyz_norm,perm_data[,ncol(data2)]), 3)
-  
+  perm_clusters <- kmeans(sta_scale, 20)
   # 计算每个聚类的平均突变频率
-  perm_means <- tapply(perm_data[, ncol(perm_data)], perm_clusters$cluster, mean)
-  
+  perm_means <- tapply(new_data$mutation, perm_clusters$cluster, mean)
   # 保存最高平均值
   max_means[i] <- max(perm_means)
 }
 
 # 计算原始聚类结果中突变高发区的平均值在排序后的位置
 #我们使用 rank 变量计算原始聚类结果中突变高发区的平均值在重排结果中的排名。
-#具体来说，我们将所有重排结果中的最高平均值进行排序，
-#并计算突变高发区的原始平均值在排序后的位置。
+#具体来说，我们将所有重排结果中的最高平均值进行排序，并计算突变高发区的原始平均值在排序后的位置。
 #如果突变高发区的原始平均值在排序后的位置较靠前，
-#那么它在重排结果中的表现就比较好，
-#表明突变高发区是有统计学意义的；
+#那么它在重排结果中的表现就比较好，表明突变高发区是有统计学意义的；
 #那么我们就可以拒绝原始聚类结果中突变高发区的平均值在随机重排中产生的最大值的排序位置上的假设，
 #即突变高发区的平均值是随机出现的。
-#反之，如果它在排序后的位置较靠后，
-#那么它在重排结果中的表现就比较差，
+#反之，如果它在排序后的位置较靠后，那么它在重排结果中的表现就比较差，
 #表明突变高发区的结果可能是随机出现的。
 rank <- sum(max_means >= orig_means[high_freq_cluster]) / n_permutations
 #计算出超过原始数据中聚类结果中平均突变频率最高的聚类的平均值的随机重排数量
@@ -796,14 +742,16 @@ print(p_value_1)
 m <- 100
 for (i in 1:m) {
   for (j in 1:n_permutations){
-    # 对突变概率进行重排
-    perm_data[,ncol(data2)] <- sample(data2[,ncol(data2)], replace=FALSE)
+    perm_data <- data3
+    perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
+    mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
+    sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
     
     # 对重排后的数据进行聚类
-    perm_clusters <- kmeans(cbind(xyz_norm,perm_data[,ncol(data2)]), 3)
+    perm_clusters <- kmeans(sta_scale, 20)
     
     # 计算每个聚类的平均突变频率
-    perm_means <- tapply(perm_data[, ncol(perm_data)], perm_clusters$cluster, mean)
+    perm_means <- tapply(new_data$mutation, perm_clusters$cluster, mean)
     
     # 保存最高平均值
     max_means[j] <- max(perm_means)
@@ -831,4 +779,95 @@ if (mean(p_v_1) < alpha) {
   cat("Reject null hypothesis with average p-value =", mean(p_v_1))
 } else {
   cat("Fail to reject null hypothesis with average p-value =", mean(p_v_1))
+}
+if(mean(p_v) < alpha){
+  # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
+  significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
+  print(significant_points)
+  # 提取p值小于0.05的聚类中的所有数据点的坐标
+  significant_coordinates <- new_data[significant_points, c("x", "y", "z")]
+  
+  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点
+  fig <- plot_ly() %>%
+    add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>%
+    add_trace(data = significant_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "Significant Clusters", marker = list(color = "red")) %>%
+    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+  
+  fig
+}
+
+
+
+
+#Permutation法(均值假设检验+标准化处理)
+# 计算原始聚类结果中每个聚类的均值
+orig_clusters <- kmeans(scale_vector, 20)
+orig_means <- tapply(scale_vector$V4, orig_clusters$cluster, mean)
+n_permutations <- 1000
+data3<-data[1:972,c("X","Y","Z","virusPercent")]
+# 确定突变高发区
+high_freq_cluster <- which.max(orig_means)
+
+# 初始化向量来保存每次重排后的最高平均值
+max_means <- rep(NA, n_permutations)
+p_v<-numeric(n_permutations)
+p_v_1<-numeric(n_permutations)
+m <- 100
+x_scale <- scale(data3[,1])
+y_scale <- scale(data3[,2])
+z_scale <- scale(data3[,3])
+for (i in 1:m) {
+  for (j in 1:n_permutations){
+    perm_data <- data3
+    perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
+    mut_scale <- scale(perm_data[,ncol(data3)])
+    sta_scale <- data.frame(x = x_scale,y = y_scale,z = z_scale,mutation = mut_scale)
+    
+    # 对重排后的数据进行聚类
+    perm_clusters <- kmeans(sta_scale, 20)
+    
+    # 计算每个聚类的平均突变频率
+    perm_means <- tapply(scale_vector$V4, perm_clusters$cluster, mean)
+    
+    # 保存最高平均值
+    max_means[j] <- max(perm_means)
+    
+  }
+  rank <- sum(max_means >= orig_means[high_freq_cluster]) / n_permutations
+  p_v[i] <- min(rank, 1-rank)
+  p_v_1[i]<-2 * (1 - pnorm(abs(rank - 0.5) * sqrt(n_permutations / 12)))
+  
+}
+
+print(mean(p_v))
+print(mean(p_v_1))
+
+#设置显著性水平
+alpha<-0.05
+
+# 判断是否拒绝原假设
+if (mean(p_v) < alpha) {
+  cat("Reject null hypothesis with average p-value =", mean(p_v))
+} else {
+  cat("Fail to reject null hypothesis with average p-value =", mean(p_v))
+}
+if (mean(p_v_1) < alpha) {
+  cat("Reject null hypothesis with average p-value =", mean(p_v_1))
+} else {
+  cat("Fail to reject null hypothesis with average p-value =", mean(p_v_1))
+}
+if(mean(p_v) < alpha){
+  # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
+  significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
+  print(significant_points)
+  # 提取p值小于0.05的聚类中的所有数据点的坐标
+  significant_coordinates <- scale_vector[significant_points, c("X", "Y", "Z")]
+  
+  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点
+  fig <- plot_ly() %>%
+    add_trace(data = scale_vector, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "All Points") %>%
+    add_trace(data = significant_coordinates, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "Significant Clusters", marker = list(color = "red")) %>%
+    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+  
+  fig
 }
