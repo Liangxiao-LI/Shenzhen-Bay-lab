@@ -11,7 +11,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Load library
-Parameter change: at row 405，row 776 (aplha)
+Parameter change: at row 414(K-num iteration)，row 677,1006 (aplha for significance test),  827,1169 alp(alpha for high-mutation point test)
+
+
+
 ```{r cars, echo=FALSE, include=FALSE}
 library(sp)
 library(spgwr)
@@ -168,7 +171,7 @@ Therefore, we need to do normalization
 It's able to normalize if the data follows same distribution before and after the normalization.
 
 First normalise x,y,z
-```{r}
+```{r,echo=FALSE}
 #抽提坐标数据
 xyz<-data2[,c("X","Y","Z")]
 #标准化xyz数据
@@ -187,7 +190,9 @@ plot3d(feature_vector[,1], feature_vector[,2], feature_vector[,3], col = "blue",
 plot3d(data2[,1], data2[,2], data2[,3], col = "blue", size = 2)
 ```
 
-```{r}
+Check original xyz and normalised xyz's data range and distribution
+
+```{r,echo=FALSE}
 
 #原始的xyz和标准化后的xyz的数据范围和分布
 # 查看原始数据的数据范围和分布情况
@@ -198,7 +203,9 @@ hist(data2[, 3])      # 绘制z列的直方图
 
 ```
 
-```{r}
+check the data range and distribution after normalization
+
+```{r,echo=FALSE}
 # 查看标准化后的数据的数据范围和分布情况
 summary(feature_vector[, 1:3])  # 显示前三列（x_norm、y_norm、z_norm）的数据范围和分布情况
 hist(feature_vector[, 1])      # 绘制x_norm列的直方图
@@ -221,7 +228,7 @@ ks.test(data2[, 3], feature_vector[, 3])  # 进行Kolmogorov-Smirnov检验，比
 
 Here we prove that x,y,z,vp follows the rule
 
-```{r}
+```{r,echo=FALSE}
 # 原始数据的密度图
 p1 <- ggplot(data2, aes(x = X)) +
   geom_density(fill = "steelblue", color = "white") +
@@ -253,7 +260,7 @@ grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 2, ncol = 3)
 
 ```
 
-```{r}
+```{r,echo=FALSE}
 # 循环绘制所有的二维多变量密度图
 # 标准化前的二维密度图
 library(ggplot2)
@@ -397,18 +404,19 @@ qqline(new_data$z)
 #K-means cluster
 
 Clustering - Model validation (Find best parameter)
-```{r}
+
+```{r,echo=FALSE}
 
 #Model validation - find best parameter
 index <- data.frame()
 
 #标记最大几个值
-topnum = 20
+topnum = 3
 
 #K-num iteration
-Kmin <- 10
-Kmax <- 180
-iteration <- 20 #iteration number per k num 
+Kmin <- 40
+Kmax <- 45
+iteration <- 1 #iteration number per k num 
 
 for (i in Kmin:Kmax) {
   
@@ -444,7 +452,17 @@ for (i in Kmin:Kmax) {
 
 ```
 
-```{r}
+```{r,echo=FALSE}
+cat("显示最高指数数量：", topnum, "\n")
+cat("K选择迭代尝试范围：", Kmin, "--", Kmax)
+cat("每个K循环聚类次数：", iteration)
+```
+
+
+
+Line chart for Dunn Index
+
+```{r,echo=FALSE}
 
 
 colnames(index) <- c("Dunn", "Calinski-Harabasz", "Average_Silhouette_Width", "Entropy","Wss")
@@ -478,9 +496,9 @@ colnames(top_dun) <- c("K-Num", "Dunn")
 datatable(top_dun)
 
 ```
+Line chart for Calinski-Harabasz Index
 
-
-```{r}
+```{r,echo=FALSE}
 
 # Line chart for Calinski-Harabasz Index
 plot(index$`Calinski-Harabasz`, type = "l", xlab = "Observation", ylab = "Calinski-Harabasz Index", main = "Calinski-Harabasz Index",xlim = c(0, length(index$`Calinski-Harabasz`) +1), ylim = c(min(index$`Calinski-Harabasz`)*0.95, max(index$`Calinski-Harabasz`)*1.2 ))
@@ -507,8 +525,9 @@ datatable(top_ch)
 
 ```
 
+Line chart for average Silhouette Width
 
-```{r}
+```{r,echo=FALSE}
 
 # Line chart for Average Silhouette Width
 plot(index$`Average_Silhouette_Width`, type = "l", xlab = "Observation", ylab = "Average Silhouette Width", main = "Average Silhouette Width",xlim = c(0, length(index$`Average_Silhouette_Width`) +1), ylim = c(min(index$`Average_Silhouette_Width`)*0.95, max(index$`Average_Silhouette_Width`)*1.2))
@@ -535,8 +554,9 @@ datatable(top_ASW)
 
 ```
 
+Line chart for Entropy
 
-```{r}
+```{r,echo=FALSE}
 
 # Line chart for Entropy
 plot(index$Entropy, type = "l", xlab = "Observation", ylab = "Entropy", main = "Entropy",xlim = c(0, length(index$Entropy) +1), ylim = c(min(index$Entropy)*0.95, max(index$Entropy)*1.2))
@@ -556,8 +576,9 @@ for (i in 1:length(top_three)) {
 }
 ```
 
+Line chart for Wss
 
-```{r}
+```{r,echo=FALSE}
 
 # Line chart for Wss
 plot(index$Wss, type = "l", xlab = "Observation", ylab = "Wss", main = "Elbow method",xlim = c(0, length(index$Wss) +1), ylim = c(min(index$Wss)*0.95, max(index$Wss)*1.2))
@@ -599,7 +620,7 @@ Wss: the lower the better
 
 weighted mean score = Dunn percentage + CH percentage + S percentage + entropy percentage + Wss percentage
 
-```{r}
+```{r,echo=FALSE}
 
 D <- index$Dunn
 A <- index$`Average_Silhouette_Width`
@@ -636,7 +657,7 @@ for (i in 1:length(WS$`Weighted score`)) {
   #text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
   for (n in num){
     points(x = n +Kmin -1, y= top_three[i], col = "red", pch = 19)
-    Best_K <- rbind(Best_K, c(i,n,top_three[i]) )
+    Best_K <- rbind(Best_K, c(i,n+WS$`K-Num`[1] - 1,top_three[i]) )
     
     
   }
@@ -647,11 +668,13 @@ datatable(Best_K)
 
 ```
 
+Therefore,we get Best-K from the cluster indexes.
 
-Therefore, we choose k = 122，k= 129,k=118 as our parameter in this circumstances.
+Now we need to perform validation whether these k numbers are significant compared to other k.
 
+#Method 1
 
-```{r}
+```{r,warning=FALSE}
 
 alpha = 0.05
 
@@ -748,17 +771,17 @@ if (p_values[which.max(orig_means)]< alpha) {
 #如果原始数据聚类后的平均突变那一类的p值小于0.05的话，print出该类里的点
 # 如果最高平均突变频率的类的p值小于0.05，则显示该类的点
 if (p_values[which.max(orig_means)] < 0.05) {
-  cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
-  cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
-  selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
+#  cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
+#  cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
+selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
   for (i in selected_rows) {
-    cat(paste(i, "\t", new_data[i, "x"], "\t", new_data[i, "y"], "\t", new_data[i, "z"], "\t", data[i, "virusPercent"], "\n"))
+#    cat(paste(i, "\t", new_data[i, "x"], "\t", new_data[i, "y"], "\t", new_data[i, "z"], "\t", data[i, "virusPercent"], "\n"))
   }
   
   # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
   significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
-  print(significant_clusters)
-  print(significant_points)
+#  print(significant_clusters)
+#  print(significant_points)
   # 提取p值小于0.05的聚类中的所有数据点的坐标
   significant_coordinates <- new_data[significant_points, c("x", "y", "z")]
   
@@ -773,7 +796,7 @@ if (p_values[which.max(orig_means)] < 0.05) {
 
 #检验点的正确
 cluster_data <- scale_vector[orig_clusters$cluster == which.max(orig_means), ]
-print(cluster_data)
+#print(cluster_data)
 
   
   
@@ -782,7 +805,7 @@ print(cluster_data)
 
 #筛选p值，p值过小的点的k才选中
 if (length(k_validated) == 0) {
-  temp <- 0
+  Final_K <- 0
 } else {
   # 如果 condition 为 FALSE，则执行这里的代码
   colnames(k_validated) <- c("K")
@@ -799,9 +822,199 @@ datatable(Final_K)
 ```
 
 
+#Permutation-based test determine high mutation spot
+Once we validated our k, we need to find the highest mutation points and their coordinates:
+
+```{r,echo=FALSE,warning=FALSE}
+#突变概率重排
+per_num <- 1000 # 重排聚类次数
+alp <- 0.95
+temp_data <- new_data
+
+if (Final_K == 0){
+    
+    Final_K = 0
+    
+  }else{
+    
+for (k in Final_K[,2]){
+  
+data2<-data[1:972,c("X","Y","Z","virusPercent")]
+data2 <- data.frame(data2)
+  
+kmeans_res <- kmeans(temp_data, centers=k, nstart=iteration)
+
+result <- cbind(temp_data,kmeans_res$cluster)
+
+colnames(result) <- c("X","Y","Z", "VP", "Cluster_Index")
+
+result <- data.frame(result)
+
+means <- data.frame()
+
+for (n in 1:k){
+  
+  # Select rows in 'result' data frame where 'Cluster_Index' equals 72
+  subset_result <- result[result$Cluster_Index == n, ]
+  
+  means <- rbind(means, c(n,sum(subset_result$VP)/nrow(subset_result))) 
+  
+}
+
+colnames(means) <- c("Cluster_Index","mean_VP")
 
 
-```{r}
+Per_means <- data.frame(means[,1])
+
+colnames(Per_means) <- c("Cluster_Index")
+
+result_Per <- data.frame(result)
+
+for (i in 1:per_num){
+  
+  result_Per$VP <- sample(result_Per$VP)
+  
+  # Create a new column in 'Per_means' for the current iteration
+  col_name <- paste("mean_", i, sep = "")
+  Per_means[, col_name] <- NA
+  
+  for (n in 1:k){
+  
+  # Select rows in 'result' data frame where 'Cluster_Index' equals 72
+  subset_result <- result_Per[result_Per$Cluster_Index == n, ]
+  
+  
+  # Compute mean and add to 'Per_means' data frame with column name
+  
+  Per_means[n, col_name] <- sum(subset_result$VP)/nrow(subset_result)
+  
+}
+  
+}
+
+
+
+
+# Create a new column in 'means' for identifying the high_mutation point
+  col_name <- paste("Is_high")
+  means[, col_name] <- NA
+
+
+for (i in 1:k){
+  
+  # Compute the 95th percentile of the first row of 'Per_means'
+  top_5_percentile <- quantile(Per_means[i, ], probs = alp, na.rm = TRUE)
+
+  if (means[i,2] > top_5_percentile){
+    
+    means[i,3] <- 1
+    
+  }else{
+    
+    means[i,3] <- 0
+    
+  }
+  
+  
+}
+
+
+
+# Select rows in 'means' where 'Is_high' is equal to 1
+high_mut <- means[means$Is_high == 1, ]
+
+# Print the selected rows
+#print(high_mut)
+
+# Copy 'Cluster_Index' column from 'result' to 'data2'
+data2 <- cbind(data2, result$Cluster_Index)
+
+colnames(data2) <- c("X","Y","Z","virusPercent","Cluster_Index")
+
+# Create a new column in 'data2' for identifying the high_mutation point
+col_name <- paste("Is_high")
+data2[, col_name] <- NA
+
+# Create a new column 'Is_high' in 'data2'
+data2$Is_high <- ifelse(data2$Cluster_Index %in% high_mut$Cluster_Index, 1, 0)
+
+high_virus_data <- 0
+
+# Select rows of 'data2' where 'Is_high' is equal to 1
+high_virus_data <- data2[data2$Is_high == 1, ]
+
+# Print the selected rows
+#print(high_virus_data)
+
+# Sort 'high_virus_data' by 'Cluster_Index'
+high_virus_data <- high_virus_data[order(high_virus_data$Cluster_Index), ]
+
+# Print the sorted 'high_virus_data' data frame
+print(high_virus_data)
+
+#High_mut_center: a datarame having the cluster_index and the center coordinate
+High_mut_center <- data.frame(matrix(nrow=nrow(high_mut), ncol=4))
+
+# Create a new column in 'High_mut_center' for identifying the high_mutation point
+colnames(High_mut_center) <- c("Cluster_Index","center_X","center_Y","center_Z")
+
+High_mut_center[,1] <- high_mut[,1]
+
+num <- 0
+for (i in unique(high_virus_data$Cluster_Index)){
+  num <- num+1
+  temp <- high_virus_data[high_virus_data$Cluster_Index == i, ]
+  
+  x <- temp$X
+  y <- temp$Y
+  z <- temp$Z
+  
+  # Calculate the center of the three sets of x, y, and z coordinates
+  center_X <- mean(x)
+  center_Y <- mean(y)
+  center_Z <- mean(z)
+  
+  #print(center_X)
+  
+  High_mut_center[num,2] <- center_X
+  High_mut_center[num,3] <- center_Y
+  High_mut_center[num,4] <- center_Z
+  
+}
+
+# Print the center coordinates
+cat("K-num:", k)
+cat("Hot spot centers are:")
+print(High_mut_center)
+
+}
+    
+  }
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Method 2
+
+```{r,warning=FALSE}
 
 alpha = 0.05
 
@@ -901,17 +1114,17 @@ if (p_values[which.max(orig_means)]< alpha) {
 #如果原始数据聚类后的平均突变那一类的p值小于0.05的话，print出该类里的点
 # 如果最高平均突变频率的类的p值小于0.05，则显示该类的点
 if (p_values[which.max(orig_means)] < 0.05) {
-  cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
-  cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
-  selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
+#  cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
+#  cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
+selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
   for (i in selected_rows) {
-    cat(paste(i, "\t", scale_vector[i, "X"], "\t", scale_vector[i, "Y"], "\t", scale_vector[i, "Z"], "\t", scale_vector[i, "V4"], "\n"))
+#    cat(paste(i, "\t", scale_vector[i, "X"], "\t", scale_vector[i, "Y"], "\t", scale_vector[i, "Z"], "\t", scale_vector[i, "V4"], "\n"))
   }
   
   # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
   significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
-  print(significant_clusters)
-  print(significant_points)
+#  print(significant_clusters)
+#  print(significant_points)
   # 提取p值小于0.05的聚类中的所有数据点的坐标
   significant_coordinates <- scale_vector[significant_points, c("X", "Y", "Z")]
   
@@ -926,13 +1139,13 @@ if (p_values[which.max(orig_means)] < 0.05) {
 
 #检验点的正确
 cluster_data <- scale_vector[orig_clusters$cluster == which.max(orig_means), ]
-print(cluster_data)
+#print(cluster_data)
 
 }
 
 #筛选p值，p值过小的点的k才选中
 if (length(k_validated) == 0) {
-  temp <- 0
+  Final_K <- 0
 } else {
   # 如果 condition 为 FALSE，则执行这里的代码
   colnames(k_validated) <- c("K")
@@ -950,8 +1163,176 @@ datatable(Final_K)
 
 
 
-##Determine parameter
-
-For K-means method, we take k = ?
+#Permutation-based test determine high mutation spot
 
 
+Once we validated our k, we need to find the highest mutation points and their coordinates:
+
+```{r,echo=FALSE,warning=FALSE}
+#突变概率重排
+per_num <- 1000 # 重排聚类次数
+alp <- 0.95
+temp_data <- new_data
+
+if (Final_K == 0){
+    
+    Final_K <- 0
+    
+  }else{
+    
+for (k in Final_K[,2]){
+  
+data2<-data[1:972,c("X","Y","Z","virusPercent")]
+data2 <- data.frame(data2)
+  
+kmeans_res <- kmeans(temp_data, centers=k, nstart=iteration)
+
+result <- cbind(temp_data,kmeans_res$cluster)
+
+colnames(result) <- c("X","Y","Z", "VP", "Cluster_Index")
+
+result <- data.frame(result)
+
+means <- data.frame()
+
+for (n in 1:k){
+  
+  # Select rows in 'result' data frame where 'Cluster_Index' equals 72
+  subset_result <- result[result$Cluster_Index == n, ]
+  
+  means <- rbind(means, c(n,sum(subset_result$VP)/nrow(subset_result))) 
+  
+}
+
+colnames(means) <- c("Cluster_Index","mean_VP")
+
+
+Per_means <- data.frame(means[,1])
+
+colnames(Per_means) <- c("Cluster_Index")
+
+result_Per <- data.frame(result)
+
+for (i in 1:per_num){
+  
+  result_Per$VP <- sample(result_Per$VP)
+  
+  # Create a new column in 'Per_means' for the current iteration
+  col_name <- paste("mean_", i, sep = "")
+  Per_means[, col_name] <- NA
+  
+  for (n in 1:k){
+  
+  # Select rows in 'result' data frame where 'Cluster_Index' equals 72
+  subset_result <- result_Per[result_Per$Cluster_Index == n, ]
+  
+  
+  # Compute mean and add to 'Per_means' data frame with column name
+  
+  Per_means[n, col_name] <- sum(subset_result$VP)/nrow(subset_result)
+  
+}
+  
+}
+
+
+
+
+# Create a new column in 'means' for identifying the high_mutation point
+  col_name <- paste("Is_high")
+  means[, col_name] <- NA
+
+
+for (i in 1:k){
+  
+  # Compute the 95th percentile of the first row of 'Per_means'
+  top_5_percentile <- quantile(Per_means[i, ], probs = alp, na.rm = TRUE)
+
+  if (means[i,2] > top_5_percentile){
+    
+    means[i,3] <- 1
+    
+  }else{
+    
+    means[i,3] <- 0
+    
+  }
+  
+  
+}
+
+
+
+# Select rows in 'means' where 'Is_high' is equal to 1
+high_mut <- means[means$Is_high == 1, ]
+
+# Print the selected rows
+#print(high_mut)
+
+# Copy 'Cluster_Index' column from 'result' to 'data2'
+data2 <- cbind(data2, result$Cluster_Index)
+
+colnames(data2) <- c("X","Y","Z","virusPercent","Cluster_Index")
+
+# Create a new column in 'data2' for identifying the high_mutation point
+col_name <- paste("Is_high")
+data2[, col_name] <- NA
+
+# Create a new column 'Is_high' in 'data2'
+data2$Is_high <- ifelse(data2$Cluster_Index %in% high_mut$Cluster_Index, 1, 0)
+
+high_virus_data <- 0
+
+# Select rows of 'data2' where 'Is_high' is equal to 1
+high_virus_data <- data2[data2$Is_high == 1, ]
+
+# Print the selected rows
+#print(high_virus_data)
+
+# Sort 'high_virus_data' by 'Cluster_Index'
+high_virus_data <- high_virus_data[order(high_virus_data$Cluster_Index), ]
+
+# Print the sorted 'high_virus_data' data frame
+print(high_virus_data)
+
+#High_mut_center: a datarame having the cluster_index and the center coordinate
+High_mut_center <- data.frame(matrix(nrow=nrow(high_mut), ncol=4))
+
+# Create a new column in 'High_mut_center' for identifying the high_mutation point
+colnames(High_mut_center) <- c("Cluster_Index","center_X","center_Y","center_Z")
+
+High_mut_center[,1] <- high_mut[,1]
+
+num <- 0
+for (i in unique(high_virus_data$Cluster_Index)){
+  num <- num+1
+  temp <- high_virus_data[high_virus_data$Cluster_Index == i, ]
+  
+  x <- temp$X
+  y <- temp$Y
+  z <- temp$Z
+  
+  # Calculate the center of the three sets of x, y, and z coordinates
+  center_X <- mean(x)
+  center_Y <- mean(y)
+  center_Z <- mean(z)
+  
+  #print(center_X)
+  
+  High_mut_center[num,2] <- center_X
+  High_mut_center[num,3] <- center_Y
+  High_mut_center[num,4] <- center_Z
+  
+}
+
+# Print the center coordinates
+cat("K-num:", k)
+cat("Hot spot centers are:")
+print(High_mut_center)
+
+}
+    
+}
+
+
+```
