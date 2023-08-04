@@ -131,6 +131,27 @@ xyz_norm<-scale(xyz)
 # 将标准化处理过的坐标和突变频率组合为特征向量
 feature_vector <- cbind(xyz_norm, data2$virusPercent)
 
+#抽提突变频率
+w<-data2[,c("virusPercent")]
+#标准化xyz数据
+w_norm<-scale(w)
+
+#library(MASS)
+#library(car)
+
+freq_trans_1 <- log(data2$virusPercent) #对数变换
+freq_trans_2<-scale(freq_trans_1)
+freq_trans_3<-(freq_trans_1 - min(freq_trans_1)) / (max(freq_trans_1) - min(freq_trans_1))
+# 绘制变换前后的数据分布
+par(mfrow=c(1,3))
+#hist(data2$mutation, main="Before Transformation", xlab="freq")
+hist(freq_trans_1)
+hist(freq_trans_2)
+hist(freq_trans_3)
+# 将标准化处理过的坐标和突变频率组合为特征向量
+scale_vector <- cbind(xyz_norm, freq_trans_2)
+scale_vector<-data.frame(scale_vector)
+
 #修改1 可视化标准化后的蛋白质结构
 # 创建3D散点图
 plot3d(feature_vector[,1], feature_vector[,2], feature_vector[,3], col = "blue", size = 2)
@@ -147,13 +168,14 @@ summary(data2[, 1:3])  # 显示前三列（x、y、z）的数据范围和分布�
 hist(data2[, 1])      # 绘制x列的直方图
 hist(data2[, 2])      # 绘制y列的直方图
 hist(data2[, 3])      # 绘制z列的直方图
+hist(freq_trans_1)      #绘制virusPercent的直方图
 
 # 查看标准化后的数据的数据范围和分布情况
 summary(feature_vector[, 1:3])  # 显示前三列（x_norm、y_norm、z_norm）的数据范围和分布情况
 hist(feature_vector[, 1])      # 绘制x_norm列的直方图
 hist(feature_vector[, 2])      # 绘制y_norm列的直方图
 hist(feature_vector[, 3])      # 绘制z_norm列的直方图
-
+hist(scale_vector[, 4])        #绘制vrius_norm的直方图
 #验证标准化前后数据分布是否相似
 #可以比较前后的直方图，观察它们的形状、中心位置、分散程度等特征是否相似
 #如果两个直方图的形状和特征较为相似，那么它们的分布也可能相似
@@ -222,6 +244,12 @@ p2 <- ggplot(data2, aes(x = Y)) +
 p3 <- ggplot(data2, aes(x = Z)) +
   geom_density(fill = "steelblue", color = "white") +
   xlab("Z") + ylab("Density") + ggtitle("Original Z Density Distribution")
+
+p7 <- ggplot(data2, aes(x = virusPercent)) +
+  geom_density(fill = "steelblue", color = "white") +
+  xlab("virusPercent") + ylab("Density") + ggtitle("Original vP Density Distribution")
+p7<-p7+xlim(0,0.02)
+
 feature_vector<-data.frame(feature_vector)
 # 标准化后的密度图
 p4 <- ggplot(feature_vector, aes(x = X)) +
@@ -236,8 +264,13 @@ p6 <- ggplot(feature_vector, aes(x = Z)) +
   geom_density(fill = "steelblue", color = "white") +
   xlab("Z") + ylab("Density") + ggtitle("Standardized Z Density Distribution")
 
+p8 <- ggplot(scale_vector, aes(x = V4)) +
+  geom_density(fill = "steelblue", color = "white") +
+  xlab("virusPercent") + ylab("Density") + ggtitle("standardized vP Density Distribution")
+#p8<-p8+xlim(-0.2,-0.1)
+
 # 将六张图合并为两行三列,形状，位置，峰度和偏度
-grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 2, ncol = 3)
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8 ,nrow = 2, ncol = 4)
 
 #如果在不同的变量上进行标准化，即使在每个变量上的密度图相似，
 #也不能保证在所有变量上的分布相似。
@@ -303,34 +336,9 @@ sum(is.na(scale_vector$V4))
 sum(is.infinite(scale_vector$V4))
 
 #转化方法1：同时标准化处理
-#抽提突变频率
-w<-data2[,c("virusPercent")]
-#标准化xyz数据
-w_norm<-scale(w)
-# 将标准化处理过的坐标和突变频率组合为特征向量
-scale_vector <- cbind(xyz_norm, w_norm)
-#观察突变频率标准化前后的数据分布
-p1 <- ggplot(data2, aes(x = virusPercent)) +
-  geom_density(fill = "steelblue", color = "white") +
-  xlab("virusPercent") + ylab("Density") + ggtitle("Original vP Density Distribution")
-p1<-p1+xlim(0,0.02)
-
-scale_vector<-data.frame(scale_vector)
-
-p2 <- ggplot(scale_vector, aes(x = V4)) +
-  geom_density(fill = "steelblue", color = "white") +
-  xlab("virusPercent") + ylab("Density") + ggtitle("standardized vP Density Distribution")
-p2<-p2+xlim(-0.2,-0.1)
-
-# 将两张图合并为一行二列,形状，位置，峰度和偏度
-grid.arrange(p1, p2, nrow = 1, ncol = 2)
-
-#直方图
-hist(data2[,4])
-hist(scale_vector[,4])
 
 # 对比前后突变频率的分布
-ks.test(data2[, 4], scale_vector[, 4])  # 进行Kolmogorov-Smirnov检验，比较z列的分布
+ks.test(freq_trans_1, scale_vector[, 4])  # 进行Kolmogorov-Smirnov检验，比较z列的分布
 duplicated(data2[,4])
 table(data2[,4])
 
@@ -350,8 +358,7 @@ data2$z <- (data2$Z - min(data2$Z)) / (max(data2$Z) - min(data2$Z))
 data2$mutation <- (data2$virusPercent - min(data2$virusPercent)) / (max(data2$virusPercent) - min(data2$virusPercent))
 
 # 构建新的数据框只存放缩后的四列数据
-new_data <- data.frame(x = data2$x, y = data2$y, z = data2$z, mutation = data2$mutation)
-
+new_data <- data.frame(x = data2$x, y = data2$y, z = data2$z, mutation = freq_trans_3)
 #验证特征放缩前后数据分布相似性
 
 # 创建3D散点图
@@ -363,7 +370,7 @@ pairs(new_data[,c("x","y","z","mutation")],main = "Scatterplot Matrix after")
 
 # 比较缩放前后数据的直方图
 par(mfrow = c(2, 4))   # 将图形区域划分为2行4列
-hist(data2$virusPercent, main = "Mut Before Scale", xlab = "Mutation")
+hist(log(data2$virusPercent), main = "Mut Before Scale", xlab = "Mutation")
 hist(data2$X, main = "X Before Scale", xlab = "X")
 hist(data2$Y, main = "Y Before Scale", xlab = "Y")
 hist(data2$Z, main = "Z Before Scale", xlab = "Z")
@@ -374,7 +381,7 @@ hist(new_data$z, main = "Z After Scale", xlab = "Z")
 
 # 比较缩放前后数据的密度图
 par(mfrow = c(2, 4))   # 将图形区域划分为2行4列
-plot(density(data2$virusPercent), main = "Mut Before Scale", xlab = "Mutation")
+plot(density(log(data2$virusPercent)), main = "Mut Before Scale", xlab = "Mutation")
 plot(density(data2$X), main = "X Before Scaling", xlab = "X")
 plot(density(data2$Y), main = "Y Before Scaling", xlab = "Y")
 plot(density(data2$Z), main = "Z Before Scaling", xlab = "Z")
@@ -385,8 +392,8 @@ plot(density(new_data$z), main = "Z After Scale", xlab = "Z")
 
 # 比较缩放前后数据的QQ图
 par(mfrow = c(2, 4))   # 将图形区域划分为2行4列
-qqnorm(data2$virusPercent, main = "Mut Before Scale")
-qqline(data2$virusPercent)
+qqnorm(log(data2$virusPercent), main = "Mut Before Scale")
+qqline(log(data2$virusPercent))
 qqnorm(data2$X, main = "X Before Scale")
 qqline(data2$X)
 qqnorm(data2$Y, main = "Y Before Scale")
@@ -411,11 +418,12 @@ qqline(new_data$z)
 # 进行 KMeans 聚类
 set.seed(123)
 kmeans_result <- kmeans(new_data, centers = 3, nstart = 20)
+kmeans_result_1 <- kmeans(scale_vector, centers = 3, nstart = 20)
 # 将聚类结果添加到数据框中
 data2$cluster <- as.factor(kmeans_result$cluster)
 # 可视化聚类结果&对聚类结果进一步分析
 fviz_cluster(list(data = new_data, cluster = kmeans_result$cluster))
-fviz_cluster(list(data = sub_data, cluster = kmeans_result$cluster))
+fviz_cluster(list(data = scale_vector, cluster = kmeans_result_1$cluster))
 
 library(dplyr)
 
@@ -455,13 +463,10 @@ print(total_freq)
 
 #Permutation法(排名百分数假设检验+特征放缩处理)
 # 计算原始数据的聚类结果
-orig_clusters <- kmeans(new_data, 25)
+orig_clusters <- kmeans(new_data, 122)
+n_cluster<-length(unique(orig_clusters$cluster)) 
 data3<-data[1:972,c("X","Y","Z","virusPercent")]
 orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)
-#这一步是为了计算原始数据中每个类的平均突变频率所处的百分位数。
-#具体地，中包含原始数据中每个类突变频率的均值，那么 rank(orig_means) 返回原始数据中每个类的突变频率均值的排名。
-#然后，通过除以 length(orig_means)，即原始数据被分成的类数，可以计算出每个类的均值的排名的比例。
-#最后，乘以 100 并四舍五入到两位小数，即可得到排名。
 orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
 
 # 进行2000次突变概率重排并计算每次聚类结果
@@ -470,37 +475,21 @@ perm_results <- matrix(NA, n_permutations, length(orig_means))
 for (i in 1:n_permutations) {
   perm_data <- data3
   perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
+  perm_data[,ncol(data3)] <- log(perm_data[,ncol(data3)])
   mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
   sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
-  perm_clusters <- kmeans(sta_scale, 25)
+  perm_clusters <- kmeans(sta_scale, 122)
   perm_means <- tapply(sta_scale$mutation, perm_clusters$cluster, mean)
   perm_pcts <- round(rank(perm_means)/length(perm_means)*100, 2)
-  #这行代码是用来计算每个聚类在重排结果中的百分位数。
-  #具体来说，rank()函数计算了每个聚类均值在重排结果中的排名，
-  #然后除以重排结果的总数，并乘以100，
-  #得到了每个聚类在重排结果中的百分位数。
-  #最后，round()函数将结果保留两位小数并四舍五入。
-  #这个百分位数可以用来评估原始聚类结果中每个聚类的可能性是否显著高于随机聚类结果，
-  #在第六步计算p值时会用到。
   perm_results[i,] <- perm_pcts
-  #将每次重排得到的聚类结果的百分位数保存在perm_results矩阵中。
-  #具体来说，perm_results矩阵的每一行都对应一次重排结果，
-  #每一列对应一个聚类的百分位数。
-  #在for循环中，第i次重排得到的三个聚类的百分位数保存在perm_pcts向量中，
-  #然后将perm_pcts向量赋值给perm_results矩阵的第i行，
-  #从而将这次重排的聚类结果存储在perm_results矩阵中。
 }
+
 # 计算每个聚类的p值
-#检验原始数据中每个类的均值是否显著高原始数据的均值。
-#具体来说，这个假设检验的零假设是：原始数据中每个类的均值与原始数据的均值相等，即不存在显著差异。
-#备择假设是：原始数据中每个类的均值显著高于原始数据中的均值
 p_values <- numeric(length(orig_means))
 for (i in 1:length(orig_means)) {
-  #具体来说，对于原始数据中的每个聚类，该代码计算了重排结果中百分位数高于该聚类百分位数的比例（即p值）。
-  #如果p值很小，说明原始聚类结果中该聚类的百分位数显著高于随机聚类结果，
-  #从而支持该聚类是显著的。反之，如果p值很大，说明该聚类的百分位数可能与随机聚类结果中的百分位数相似，从而不支持该聚类是显著的
   p_values[i] <- mean(perm_results[,i] >= orig_pcts[i])
 }
+
 # 输出结果
 cat("原始聚类结果的均值：", orig_means, "\n")
 cat("原始聚类结果的百分位数：", orig_pcts, "\n")
@@ -508,62 +497,240 @@ cat("p值：", p_values, "\n")
 cat("原始聚类结果中最高的平均突变频率：", max(orig_means), "\n")
 cat("对应的p值：", p_values[which.max(orig_means)], "\n")
 
-#每次重排都会对原始数据进行打乱，破坏原始数据之间的任何关联性，
-#然后重新进行聚类，得到每个聚类的平均突变频率。
-#重排得到的聚类结果是随机的，由于在每次重排中使用了相同的聚类算法和距离度量方法，
-#因此重排结果可以用来估计原始聚类结果中每个聚类的可能性是否显著高于随机聚类结果。
-#如果原始聚类结果中的每个聚类的百分位数显著高于随机聚类结果，那么说明该聚类在原始数据中可能具有显著的生物学意义
-
-#我们想要看到的是1/3越多越好，2/3和3/3越少越好。所以当1000次中1/3的次数超过950时，即2/3和3/3的次数小于50时，可说明在该聚类相对排名的普适性。
-#首先对原始数据进行聚类，计算每个聚类的平均突变频率，
-#并将每个聚类的平均突变频率转换为对应的百分位数。
-#然后，使用突变概率重排法重复执行聚类过程，得到1000个随机聚类结果，
-#并计算每个聚类在随机聚类结果中的百分位数。
-#最后，对于原始数据中的每个聚类，计算其在随机聚类结果中的排名比原始聚类结果高的比例，高意思就是平均突变率小。排名越高，对应类的平均突变频率越小。
-#从而得到对应的p值。如果p值小于设定的显著性水平（通常是0.05），则拒绝原假设，原始聚类结果中该聚类不是随机出现的，否则接受原假设（即该聚类可能是由随机性产生的，没有显著性）
-
-#如果原始数据聚类后的平均突变那一类的p值小于0.05的话，print出该类里的点
 # 如果最高平均突变频率的类的p值小于0.05，则显示该类的点
 if (p_values[which.max(orig_means)] < 0.05) {
   cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
   cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
   selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
   for (i in selected_rows) {
-    cat(paste(i, "\t", new_data[i, "x"], "\t", new_data[i, "y"], "\t", new_data[i, "z"], "\t", data[i, "virusPercent"], "\n"))
+    cat(paste(i, "\t", new_data[i, "x"], "\t", new_data[i, "y"], "\t", new_data[i, "z"], "\t", new_data[i, "mutation"], "\n"))
   }
   
-  # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
   significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
-  print(significant_clusters)
   print(significant_points)
-  # 提取p值小于0.05的聚类中的所有数据点的坐标
-  significant_coordinates <- new_data[significant_points, c("x", "y", "z")]
+  # 提取p值小于0.05的聚类中的所有数据点的坐标 
+  significant_coordinates <- new_data[significant_points, c("x", "y", "z")] 
   
-  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点
-  fig <- plot_ly() %>%
-    add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>%
-    add_trace(data = significant_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "Significant Clusters", marker = list(color = "red")) %>%
-    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点 
+  fig <- plot_ly() %>% 
+    add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
   
-  fig
+  fig 
 }
 
-#检验点的正确
-cluster_data <- scale_vector[orig_clusters$cluster == which.max(orig_means), ]
-print(cluster_data)
+# 循环遍历每个聚类
+i_num <- list()
+j <- 1
+class_mean_distances <- numeric(n_cluster)
+class_mean_mutation_rates <- numeric(n_cluster)
+colors <- heat.colors(n_cluster)
+for (i in 1:n_cluster){
+  # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
+  if (p_values[i] < 0.05) {
+    cat("p值：", p_values[i], "\n")
+    
+    # 提取属于当前聚类的数据点的索引
+    cluster_points <- which(orig_clusters$cluster == i)
+    cat("类数：", i, "\n")
+    cat("原子序数：", data$atomSerialNumber[cluster_points], "\n")
+    cat("该类均值：", orig_means[i],"\n")
+    # 提取属于当前聚类的数据点的坐标
+    cluster_coordinates <- new_data[cluster_points, c("x", "y", "z")]
+    # 为聚类指定颜色
+    color <- colors[i]
+    i_num[j]<-i
+    j = j+1
+    class_points <- new_data[orig_clusters$cluster == i,]
+    # 计算该类中所有点之间的欧几里得距离
+    class_distances <- as.matrix(dist(class_points[,1:3]))
+    class_distances_vector <- as.vector(class_distances)
+    class_distances_vector <- class_distances_vector[class_distances_vector != 0]
+    
+    # 输出该类中所有点之间距离的统计量
+    cat("Class", i, "distance statistics:\n")
+    cat("Mean distance:", mean(class_distances_vector), "\n")
+    cat("Median distance:", median(class_distances_vector), "\n")
+    cat("Minimum distance:", min(class_distances_vector), "\n")
+    cat("Maximum distance:", max(class_distances_vector), "\n")
+    class_mean_distances[i] <- mean(class_distances_vector)
+    
+    # 计算平均突变率
+    class_mean_mutation_rates[i] <- mean(new_data[orig_clusters$cluster == i, "mutation"])
+    # 在三维散点图中添加聚类
+    fig <- fig %>% add_trace(data = cluster_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i), marker = list(color = color))
+  }
+}
+# 设定散点图的布局
+fig <- fig %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 显示散点图
+fig
+
+# 将平均距离和平均突变率存储在一个数据框中
+class_summary <- data.frame(mean_distance = class_mean_distances, mean_mutation_rate = class_mean_mutation_rates)
+# 使用ggplot2包绘制折线图
+library(ggplot2)
+ggplot(class_summary, aes(x = mean_distance, y = mean_mutation_rate)) + geom_line() + geom_point() + xlab("Mean Distance") + ylab("Mean Mutation Rate") + ggtitle("Mean Distance vs. Mean Mutation Rate")
+#讲所有类标签存储到表格中
+i_num <- data.frame(i_num)
+i_num <- as.numeric(i_num)
+# 提取所有显著性聚类的点的索引
+significant_pointer <- which(orig_clusters$cluster %in% i_num)
+# 提取所有显著性聚类的点的xyz和突变频率
+significant_data <- new_data[significant_pointer, c("x", "y", "z", "mutation")]
+significant_num <- data[significant_pointer, c("virusNumber")]
+# 输出结果
+print(significant_data)
+print(significant_num)
+# 进行层次聚类分析
+mut_region_dist <- dist(significant_data, method = "euclidean")
+mut_region_hclust <- hclust(mut_region_dist, method = "ward.D2")
+
+# 将聚类结果可视化为聚类热图
+library(pheatmap)
+pheatmap(significant_data, 
+         cluster_rows = mut_region_hclust, 
+         cluster_cols = FALSE,
+         color = colorRampPalette(c("white", "blue"))(50),
+         main = "High Mutation Regions Clustering Heatmap",
+         fontsize = 8)
+
+
+
+
+
+
+
+
+
+#(特征放缩+label重排)
+#Permutation法(排名百分数假设检验+特征放缩处理)
+# 计算原始数据的聚类结果
+k <- 122
+perm_means <- numeric(k)
+orig_clusters <- kmeans(new_data, k)
+n_cluster<-length(unique(orig_clusters$cluster)) 
+new_data$cluster <- as.factor(orig_clusters$cluster)
+orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)
+orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
+
+# 进行2000次突变概率重排并计算每次聚类结果
+n_permutations <- 2000
+perm_results <- matrix(NA, n_permutations, length(orig_means))
+for (i in 1:n_permutations) {
+  perm_data <- new_data
+  perm_data[,ncol(new_data)] <- sample(new_data[,ncol(new_data)], replace=FALSE)
+  sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = freq_trans_3,cluster = perm_data[,ncol(new_data)])
+  perm_means <- aggregate(sta_scale[, "mutation"], by = list(sta_scale$cluster), mean)$x
+  perm_pcts <- round(rank(perm_means)/length(perm_means)*100, 2)
+  perm_results[i,] <- perm_pcts
+}
+
+# 计算每个聚类的p值
+p_values <- numeric(length(orig_means))
+for (i in 1:length(orig_means)) {
+  p_values[i] <- mean(perm_results[,i] >= orig_pcts[i])
+}
+
+# 输出结果
+cat("原始聚类结果的均值：", orig_means, "\n")
+cat("原始聚类结果的百分位数：", orig_pcts, "\n")
+cat("p值：", p_values, "\n")
+cat("原始聚类结果中最高的平均突变频率：", max(orig_means), "\n")
+cat("对应的p值：", p_values[which.max(orig_means)], "\n")
+
+# 如果最高平均突变频率的类的p值小于0.05，则显示该类的点
+if (p_values[which.max(orig_means)] < 0.05) {
+  cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
+  cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
+  selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
+  for (i in selected_rows) {
+    cat(paste(i, "\t", new_data[i, "x"], "\t", new_data[i, "y"], "\t", new_data[i, "z"], "\t", new_data[i, "mutation"], "\n"))
+  }
+  
+  significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
+  print(significant_points)
+}
+# 提取p值小于0.05的聚类中的所有数据点的坐标 
+significant_coordinates <- new_data[significant_points, c("x", "y", "z")] 
+
+# 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点 
+fig_2 <- plot_ly() %>% 
+  add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+  layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
+
+fig_2
+# 循环遍历每个聚类
+i_num <- list()
+j <- 1
+colors <- heat.colors(n_cluster)
+for (i in 1:n_cluster){
+  # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
+  if (p_values[i] < 0.05) {
+    cat("p值：", p_values[i], "\n")
+    
+    # 提取属于当前聚类的数据点的索引
+    cluster_points <- which(orig_clusters$cluster == i)
+    cat("类数：", i, "\n")
+    cat("原子序数：", data$atomSerialNumber[cluster_points], "\n")
+    cat("该类均值：", orig_means[i],"\n")
+    # 提取属于当前聚类的数据点的坐标
+    cluster_coordinates <- new_data[cluster_points, c("x", "y", "z")]
+    # 为聚类指定颜色
+    color <- colors[i]
+    i_num[j]<-i
+    j = j+1
+    class_points <- new_data[orig_clusters$cluster == i, ]
+    # 计算该类中所有点之间的欧几里得距离
+    class_distances <- as.matrix(dist(class_points[,1:3]))
+    class_distances_vector <- as.vector(class_distances)
+    class_distances_vector <- class_distances_vector[class_distances_vector != 0]
+    
+    # 输出该类中所有点之间距离的统计量
+    cat("Class", i, "distance statistics:\n")
+    cat("Mean distance:", mean(class_distances_vector), "\n")
+    cat("Median distance:", median(class_distances_vector), "\n")
+    cat("Minimum distance:", min(class_distances_vector), "\n")
+    cat("Maximum distance:", max(class_distances_vector), "\n")
+    class_mean_distances[i] <- mean(class_distances_vector)
+    
+    # 计算平均突变率
+    class_mean_mutation_rates[i] <- mean(new_data[orig_clusters$cluster == i, "mutation"])
+    # 在三维散点图中添加聚类
+    fig_2 <- fig_2 %>% add_trace(data = cluster_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i), marker = list(color = color))
+  }
+}
+# 设定散点图的布局
+fig_2 <- fig_2 %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 显示散点图
+fig_2
+
+# 将平均距离和平均突变率存储在一个数据框中
+class_summary <- data.frame(mean_distance = class_mean_distances, mean_mutation_rate = class_mean_mutation_rates)
+# 使用ggplot2包绘制折线图
+ggplot(class_summary, aes(x = mean_distance, y = mean_mutation_rate)) + geom_line() + geom_point() + xlab("Mean Distance") + ylab("Mean Mutation Rate") + ggtitle("Mean Distance vs. Mean Mutation Rate")
+
+#讲所有类标签存储到表格中
+i_num <- data.frame(i_num)
+i_num <- as.numeric(i_num)
+# 提取所有显著性聚类的点的索引
+significant_pointer <- which(orig_clusters$cluster %in% i_num)
+# 提取所有显著性聚类的点的xyz和突变频率
+significant_data <- new_data[significant_pointer, c("x", "y", "z", "mutation")]
+# 输出结果
+print(significant_data)
+
+
 
 
 
 
 #Permutation法(排名百分数假设检验+标准化处理)
 # 计算原始数据的聚类结果
-orig_clusters <- kmeans(scale_vector, 20)
+orig_clusters <- kmeans(scale_vector, 122)
+n_cluster<-length(unique(orig_clusters$cluster))
 data3<-data[1:972,c("X","Y","Z","virusPercent")]
 orig_means <- tapply(scale_vector$V4, orig_clusters$cluster, mean)
-#这一步是为了计算原始数据中每个类的平均突变频率所处的百分位数。
-#具体地，中包含原始数据中每个类突变频率的均值，那么 rank(orig_means) 返回原始数据中每个类的突变频率均值的排名。
-#然后，通过除以 length(orig_means)，即原始数据被分成的类数，可以计算出每个类的均值的排名的比例。
-#最后，乘以 100 并四舍五入到两位小数，即可得到排名。
 orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
 
 # 进行2000次突变概率重排并计算每次聚类结果
@@ -575,35 +742,17 @@ z_scale <- scale(data3[,3])
 for (i in 1:n_permutations) {
   perm_data <- data3
   perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
+  perm_data[,ncol(data3)] <- log(perm_data[,ncol(data3)])
   mut_scale <- scale(perm_data[,ncol(data3)])
   sta_scale <- data.frame(x = x_scale,y = y_scale,z = z_scale,mutation = mut_scale)
-  perm_clusters <- kmeans(sta_scale, 20)
+  perm_clusters <- kmeans(sta_scale, 122)
   perm_means <- tapply(sta_scale$mutation, perm_clusters$cluster, mean)
   perm_pcts <- round(rank(perm_means)/length(perm_means)*100, 2)
-  #这行代码是用来计算每个聚类在重排结果中的百分位数。
-  #具体来说，rank()函数计算了每个聚类均值在重排结果中的排名，
-  #然后除以重排结果的总数，并乘以100，
-  #得到了每个聚类在重排结果中的百分位数。
-  #最后，round()函数将结果保留两位小数并四舍五入。
-  #这个百分位数可以用来评估原始聚类结果中每个聚类的可能性是否显著高于随机聚类结果，
-  #在第六步计算p值时会用到。
   perm_results[i,] <- perm_pcts
-  #将每次重排得到的聚类结果的百分位数保存在perm_results矩阵中。
-  #具体来说，perm_results矩阵的每一行都对应一次重排结果，
-  #每一列对应一个聚类的百分位数。
-  #在for循环中，第i次重排得到的三个聚类的百分位数保存在perm_pcts向量中，
-  #然后将perm_pcts向量赋值给perm_results矩阵的第i行，
-  #从而将这次重排的聚类结果存储在perm_results矩阵中。
 }
 # 计算每个聚类的p值
-#检验原始数据中每个类的均值是否显著高原始数据的均值。
-#具体来说，这个假设检验的零假设是：原始数据中每个类的均值与原始数据的均值相等，即不存在显著差异。
-#备择假设是：原始数据中每个类的均值显著高于原始数据中的均值
 p_values <- numeric(length(orig_means))
 for (i in 1:length(orig_means)) {
-  #具体来说，对于原始数据中的每个聚类，该代码计算了重排结果中百分位数高于该聚类百分位数的比例（即p值）。
-  #如果p值很小，说明原始聚类结果中该聚类的百分位数显著高于随机聚类结果，
-  #从而支持该聚类是显著的。反之，如果p值很大，说明该聚类的百分位数可能与随机聚类结果中的百分位数相似，从而不支持该聚类是显著的
   p_values[i] <- mean(perm_results[,i] >= orig_pcts[i])
 }
 # 输出结果
@@ -613,21 +762,6 @@ cat("p值：", p_values, "\n")
 cat("原始聚类结果中最高的平均突变频率：", max(orig_means), "\n")
 cat("对应的p值：", p_values[which.max(orig_means)], "\n")
 
-#每次重排都会对原始数据进行打乱，破坏原始数据之间的任何关联性，
-#然后重新进行聚类，得到每个聚类的平均突变频率。
-#重排得到的聚类结果是随机的，由于在每次重排中使用了相同的聚类算法和距离度量方法，
-#因此重排结果可以用来估计原始聚类结果中每个聚类的可能性是否显著高于随机聚类结果。
-#如果原始聚类结果中的每个聚类的百分位数显著高于随机聚类结果，那么说明该聚类在原始数据中可能具有显著的生物学意义
-
-#我们想要看到的是1/3越多越好，2/3和3/3越少越好。所以当1000次中1/3的次数超过950时，即2/3和3/3的次数小于50时，可说明在该聚类相对排名的普适性。
-#首先对原始数据进行聚类，计算每个聚类的平均突变频率，
-#并将每个聚类的平均突变频率转换为对应的百分位数。
-#然后，使用突变概率重排法重复执行聚类过程，得到1000个随机聚类结果，
-#并计算每个聚类在随机聚类结果中的百分位数。
-#最后，对于原始数据中的每个聚类，计算其在随机聚类结果中的排名比原始聚类结果高的比例，高意思就是平均突变率小。排名越高，对应类的平均突变频率越小。
-#从而得到对应的p值。如果p值小于设定的显著性水平（通常是0.05），则拒绝原假设，原始聚类结果中该聚类不是随机出现的，否则接受原假设（即该聚类可能是由随机性产生的，没有显著性）
-
-#如果原始数据聚类后的平均突变那一类的p值小于0.05的话，print出该类里的点
 # 如果最高平均突变频率的类的p值小于0.05，则显示该类的点
 if (p_values[which.max(orig_means)] < 0.05) {
   cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
@@ -639,318 +773,379 @@ if (p_values[which.max(orig_means)] < 0.05) {
   
   # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
   significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
-  print(significant_clusters)
   print(significant_points)
-  # 提取p值小于0.05的聚类中的所有数据点的坐标
-  significant_coordinates <- scale_vector[significant_points, c("X", "Y", "Z")]
+  # 提取p值小于0.05的聚类中的所有数据点的坐标 
+  significant_coordinates <- scale_vector[significant_points, c("X", "Y", "Z")] 
   
-  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点
-  fig <- plot_ly() %>%
-    add_trace(data = scale_vector, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "All Points") %>%
-    add_trace(data = significant_coordinates, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "Significant Clusters", marker = list(color = "red")) %>%
-    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点 
+  fig_1 <- plot_ly() %>% 
+    add_trace(data = scale_vector, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
   
-  fig
+  fig_1
 }
-
-#检验点的正确
-cluster_data <- scale_vector[orig_clusters$cluster == which.max(orig_means), ]
-print(cluster_data)
-
-
-
-
-
-
-
-
-
-
-#Permutation法(均值假设检验+特征放缩处理)
-# 计算原始聚类结果中每个聚类的均值
-orig_clusters <- kmeans(new_data, 20)
-orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)
-n_permutations <- 1000
-data3<-data[1:972,c("X","Y","Z","virusPercent")]
-# 确定突变高发区
-high_freq_cluster <- which.max(orig_means)
-
-# 初始化向量来保存每次重排后的最高平均值
-max_means <- rep(NA, n_permutations)
-p_v<-numeric(n_permutations)
-p_v_1<-numeric(n_permutations)
-
-# 进行一次1000次重排
-for (i in 1:n_permutations) {
-  perm_data <- data3
-  perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
-  mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
-  sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
-  # 对重排后的数据进行聚类
-  perm_clusters <- kmeans(sta_scale, 20)
-  # 计算每个聚类的平均突变频率
-  perm_means <- tapply(new_data$mutation, perm_clusters$cluster, mean)
-  # 保存最高平均值
-  max_means[i] <- max(perm_means)
-}
-
-# 计算原始聚类结果中突变高发区的平均值在排序后的位置
-#我们使用 rank 变量计算原始聚类结果中突变高发区的平均值在重排结果中的排名。
-#具体来说，我们将所有重排结果中的最高平均值进行排序，并计算突变高发区的原始平均值在排序后的位置。
-#如果突变高发区的原始平均值在排序后的位置较靠前，
-#那么它在重排结果中的表现就比较好，表明突变高发区是有统计学意义的；
-#那么我们就可以拒绝原始聚类结果中突变高发区的平均值在随机重排中产生的最大值的排序位置上的假设，
-#即突变高发区的平均值是随机出现的。
-#反之，如果它在排序后的位置较靠后，那么它在重排结果中的表现就比较差，
-#表明突变高发区的结果可能是随机出现的。
-rank <- sum(max_means >= orig_means[high_freq_cluster]) / n_permutations
-#计算出超过原始数据中聚类结果中平均突变频率最高的聚类的平均值的随机重排数量
-#将这个数量除以随机重排的次数num_permutations，
-#得到原始聚类结果中平均突变频率最高的聚类的平均值在所有随机重排中出现的排序百分比rank。
-print(rank)
-#rank 的值为0.206，这意味着在 1000 次重排的结果中，
-#有大约 20.6% 的结果中的突变高发区的平均值比原始聚类结果中的突变高发区的平均值更高，
-#而有 79.4% 的结果中的突变高发区的平均值比原始聚类结果中的突变高发区的平均值更低。
-
-# 计算p值
-#在零假设下，我们假设原始突变高发区与其他区域之间没有显著的差异，
-#也就是说原始突变高发区的平均值与其他区域的平均值相同。
-#我们随机重排了数据，重新计算了每个区域的平均值，并记录每个区域在每个重排结果中的排名。
-#然后，我们计算了原始突变高发区在所有重排结果中的排名比例，并将其与 1 减去排名比例中较小的那个值进行比较。
-#如果这个比例小于显著性水平（例如0.05），那么我们可以拒绝零假设，认为突变高发区是有统计学意义的。
-#在计算 rank 时，我们对原始聚类结果中的突变高发区进行了随机重排，
-#重新计算了每个聚类的平均值，并记录每个聚类在每个重排结果中的平均值。
-#然后，我们计算了原始聚类结果中突变高发区的平均值在所有重排结果中的排名比例，作为 rank 值。
-#这种方法的科学性依据是基于随机化原理，即我们通过随机化来模拟零假设，
-#即突变高发区的平均值与其他区域的平均值相同，并比较观察到的结果与随机化结果的分布，
-#以评估观察结果的显著性。
-p_value <- min(rank, 1-rank)
-print(p_value)
-
-#为了进一步验证原始聚类的非随机性，进行第二种p值计算
-#我们使用 rank 值来计算双尾 p 值。
-#具体而言，我们将 rank 值标准化为标准正态分布的分位数，并计算两个尾部的概率。
-#这个 p 值告诉我们，如果原始数据中聚类结果中平均突变频率最高的聚类的平均值是完全随机的，那么它会在所有随机重排中出现的位置的概率是多少。
-#这个 p 值可以用来评估原始聚类结果中的最大值是否显著高于随机重排的最大值，
-#从而判断是否可以拒绝原始聚类结果中平均突变频率最高的聚类的平均值是随机出现的假设。
-p_value_1 <- 2 * (1 - pnorm(abs(rank - 0.5) * sqrt(n_permutations / 12)))
-print(p_value_1)
-
-#上面只展示了进行一次1000次重排的代码，但由于Kmean聚类的随机性，
-#我们每次会得到一个不一样或者一样的p值，所以单独一次p值大于或小于0.05不能绝对说明原始聚类的突变高发区是否和其他区域的突变频率直接存在显著差异。
-#因此我打算进行100次每次1000次重排的实验，然后取所有得到的p值的平均值。
-m <- 100
-for (i in 1:m) {
-  for (j in 1:n_permutations){
-    perm_data <- data3
-    perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
-    mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
-    sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
-    
-    # 对重排后的数据进行聚类
-    perm_clusters <- kmeans(sta_scale, 20)
-    
-    # 计算每个聚类的平均突变频率
-    perm_means <- tapply(new_data$mutation, perm_clusters$cluster, mean)
-    
-    # 保存最高平均值
-    max_means[j] <- max(perm_means)
-    
-  }
-  rank <- sum(max_means >= orig_means[high_freq_cluster]) / n_permutations
-  p_v[i] <- min(rank, 1-rank)
-  p_v_1[i]<-2 * (1 - pnorm(abs(rank - 0.5) * sqrt(n_permutations / 12)))
-  
-}
-
-print(mean(p_v))
-print(mean(p_v_1))
-
-#设置显著性水平
-alpha<-0.05
-
-# 判断是否拒绝原假设
-if (mean(p_v) < alpha) {
-  cat("Reject null hypothesis with average p-value =", mean(p_v))
-} else {
-  cat("Fail to reject null hypothesis with average p-value =", mean(p_v))
-}
-if (mean(p_v_1) < alpha) {
-  cat("Reject null hypothesis with average p-value =", mean(p_v_1))
-} else {
-  cat("Fail to reject null hypothesis with average p-value =", mean(p_v_1))
-}
-if(mean(p_v) < alpha){
-  # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
-  significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
-  print(significant_points)
-  # 提取p值小于0.05的聚类中的所有数据点的坐标
-  significant_coordinates <- new_data[significant_points, c("x", "y", "z")]
-  
-  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点
-  fig <- plot_ly() %>%
-    add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>%
-    add_trace(data = significant_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "Significant Clusters", marker = list(color = "red")) %>%
-    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
-  
-  fig
-}
-
-
-
-
-#Permutation法(均值假设检验+标准化处理)
-# 计算原始聚类结果中每个聚类的均值
-orig_clusters <- kmeans(scale_vector, 20)
-orig_means <- tapply(scale_vector$V4, orig_clusters$cluster, mean)
-n_permutations <- 1000
-data3<-data[1:972,c("X","Y","Z","virusPercent")]
-# 确定突变高发区
-high_freq_cluster <- which.max(orig_means)
-
-# 初始化向量来保存每次重排后的最高平均值
-max_means <- rep(NA, n_permutations)
-p_v<-numeric(n_permutations)
-p_v_1<-numeric(n_permutations)
-m <- 100
-x_scale <- scale(data3[,1])
-y_scale <- scale(data3[,2])
-z_scale <- scale(data3[,3])
-for (i in 1:m) {
-  for (j in 1:n_permutations){
-    perm_data <- data3
-    perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
-    mut_scale <- scale(perm_data[,ncol(data3)])
-    sta_scale <- data.frame(x = x_scale,y = y_scale,z = z_scale,mutation = mut_scale)
-    
-    # 对重排后的数据进行聚类
-    perm_clusters <- kmeans(sta_scale, 20)
-    
-    # 计算每个聚类的平均突变频率
-    perm_means <- tapply(scale_vector$V4, perm_clusters$cluster, mean)
-    
-    # 保存最高平均值
-    max_means[j] <- max(perm_means)
-    
-  }
-  rank <- sum(max_means >= orig_means[high_freq_cluster]) / n_permutations
-  p_v[i] <- min(rank, 1-rank)
-  p_v_1[i]<-2 * (1 - pnorm(abs(rank - 0.5) * sqrt(n_permutations / 12)))
-  
-}
-
-print(mean(p_v))
-print(mean(p_v_1))
-
-#设置显著性水平
-alpha<-0.05
-
-# 判断是否拒绝原假设
-if (mean(p_v) < alpha) {
-  cat("Reject null hypothesis with average p-value =", mean(p_v))
-} else {
-  cat("Fail to reject null hypothesis with average p-value =", mean(p_v))
-}
-if (mean(p_v_1) < alpha) {
-  cat("Reject null hypothesis with average p-value =", mean(p_v_1))
-} else {
-  cat("Fail to reject null hypothesis with average p-value =", mean(p_v_1))
-}
-if(mean(p_v) < alpha){
-  # 可视化所有点（用蓝色表示）和突出显示的点（用红色表示）
-  significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
-  print(significant_points)
-  # 提取p值小于0.05的聚类中的所有数据点的坐标
-  significant_coordinates <- scale_vector[significant_points, c("X", "Y", "Z")]
-  
-  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点
-  fig <- plot_ly() %>%
-    add_trace(data = scale_vector, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "All Points") %>%
-    add_trace(data = significant_coordinates, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "Significant Clusters", marker = list(color = "red")) %>%
-    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
-  
-  fig
-}
-
-
-# 计算原始聚类结果中每个聚类的均值
-orig_clusters <- kmeans(new_data, 20)
-n_permutations <- 1000
-data3<-data[1:972,c("X","Y","Z","virusPercent")]
-
-# 初始化向量来保存每次重排后的最高平均值
-m <- 100
-# 存储每个聚类的p-value
-n_cluster<-length(unique(orig_clusters$cluster)) 
-p_values <- matrix(NA, nrow=n_cluster, ncol=m)
-p_values_1 <- matrix(NA, nrow = n_cluster, ncol = m)
-# 存储p-value小于0.05的聚类的索引
-significant_clusters <- c()
-
-for (i in 1:n_cluster) {
-  # 确定当前聚类的高频区域
-  high_freq_cluster <- i
-  
-  # 计算当前聚类的平均突变频率
-  orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)[high_freq_cluster]
-  
-  # 初始化向量来保存每次重排后的最高平均值
-  max_means <- rep(NA, n_permutations)
-  
-  for (u in 1:m){
-    for (j in 1:n_permutations) {
-      perm_data <- data3
-      perm_data[,ncol(data3)] <- sample(data3[,ncol(data3)], replace=FALSE)
-      mut_scale <- (perm_data[,ncol(data3)] - min(perm_data[,ncol(data3)])) / (max(perm_data[,ncol(data3)]) - min(perm_data[,ncol(data3)]))
-      sta_scale <- data.frame(x = data2$x,y = data2$y,z = data2$z,mutation = mut_scale)
-      # 对重排后的数据进行聚类
-      perm_clusters <- kmeans(sta_scale, n_cluster)
-      
-      # 计算每个聚类的平均突变频率
-      perm_means <- tapply(new_data$mutation, perm_clusters$cluster, mean)
-      
-      # 保存最高平均值
-      max_means[j] <- max(perm_means)
-    }
-    
-    # 计算p-value
-    rank <- sum(max_means >= orig_means) / n_permutations
-    p_value <- min(rank, 1-rank)
-    p_value2 <- 2 * (1 - pnorm(abs(rank - 0.5) * sqrt(n_permutations / 12)))
-    p_values[i,u] <- p_value
-    p_values_1[i,u]<- p_value2
-  }
-}
-
-for (i in 1:n_cluster){
-  # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
-  if (mean(p_value[i,]) < 0.05 && mean(p_values_1[i,] < 0.05)) {
-    significant_clusters <- c(significant_clusters, i)
-  }
-}
-
-# 初始化三维散点图
-fig <- plot_ly() %>%
-  add_trace(data = new_data, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points")
-
 # 循环遍历每个聚类
 colors <- heat.colors(n_cluster)
 for (i in 1:n_cluster){
   # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
-  if (mean(p_value[i,]) < 0.05 && mean(p_values_1[i,] < 0.05)) {
+  if (p_values[i] < 0.05) {
+    cat("p值：", p_values[i], "\n")
+    
     # 提取属于当前聚类的数据点的索引
     cluster_points <- which(orig_clusters$cluster == i)
+    cat("类数：", i, "\n")
+    cat("原子序数：", cluster_points, "\n")
+    cat("该类均值：", orig_means[i],"\n")
     # 提取属于当前聚类的数据点的坐标
-    cluster_coordinates <- new_data[cluster_points, c("x", "y", "z")]
+    cluster_coordinates <- scale_vector[cluster_points, c("X", "Y", "Z")]
     # 为聚类指定颜色
-    color <- color[i]
+    color <- colors[i]
     # 在三维散点图中添加聚类
-    fig <- fig %>% add_trace(data = cluster_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i), marker = list(color = color))
+    fig_1 <- fig_1 %>% add_trace(data = cluster_coordinates, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i), marker = list(color = color))
+  }
+}
+# 设定散点图的布局
+fig_1 <- fig_1 %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 显示散点图
+fig_1
+
+
+#(标准化+label重排)
+#Permutation法(排名百分数假设检验+特征放缩处理)
+# 计算原始数据的聚类结果
+k <- 122
+perm_means <- numeric(k)
+orig_clusters <- kmeans(scale_vector, k)
+n_cluster<-length(unique(orig_clusters$cluster)) 
+scale_vector$cluster <- as.factor(orig_clusters$cluster)
+orig_means <- tapply(scale_vector$V4, orig_clusters$cluster, mean)
+orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
+
+# 进行2000次突变概率重排并计算每次聚类结果
+n_permutations <- 2000
+perm_results <- matrix(NA, n_permutations, length(orig_means))
+for (i in 1:n_permutations) {
+  perm_data <- scale_vector
+  perm_data[,ncol(scale_vector)] <- sample(scale_vector[,ncol(scale_vector)], replace=FALSE)
+  sta_scale <- data.frame(X = x_scale, Y = y_scale, Z = z_scale, V4 = freq_trans_2,cluster = perm_data[,ncol(scale_vector)])
+  perm_means <- aggregate(sta_scale[, "V4"], by = list(sta_scale$cluster), mean)$x
+  perm_pcts <- round(rank(perm_means)/length(perm_means)*100, 2)
+  perm_results[i,] <- perm_pcts
+}
+
+# 计算每个聚类的p值
+p_values <- numeric(length(orig_means))
+for (i in 1:length(orig_means)) {
+  p_values[i] <- mean(perm_results[,i] >= orig_pcts[i])
+}
+
+# 输出结果
+cat("原始聚类结果的均值：", orig_means, "\n")
+cat("原始聚类结果的百分位数：", orig_pcts, "\n")
+cat("p值：", p_values, "\n")
+cat("原始聚类结果中最高的平均突变频率：", max(orig_means), "\n")
+cat("对应的p值：", p_values[which.max(orig_means)], "\n")
+
+# 如果最高平均突变频率的类的p值小于0.05，则显示该类的点
+if (p_values[which.max(orig_means)] < 0.05) {
+  cat("原始聚类结果中平均突变频率最高的聚类中的点：\n")
+  cat(paste("行号\tX\tY\tZ\tvirusPercent\n"))
+  selected_rows <- which(orig_clusters$cluster == which.max(orig_means))
+  for (i in selected_rows) {
+    cat(paste(i, "\t", scale_vector[i, "X"], "\t", scale_vector[i, "Y"], "\t", scale_vector[i, "Z"], "\t", scale_vector[i, "V4"], "\n"))
+  }
+  
+  significant_points <- which(orig_clusters$cluster == which.max(orig_means))  # 提取p值小于0.05的聚类中的所有数据点的索引
+  print(significant_points)
+}else{
+  # 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点 
+  fig_3 <- plot_ly() %>% 
+    add_trace(data = scale_vector, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+    layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
+  
+  fig_3
+}
+
+# 循环遍历每个聚类
+i_num <- list()
+j <- 1
+colors <- heat.colors(n_cluster)
+for (i in 1:n_cluster){
+  # 如果p-value小于0.05，则将当前聚类的索引添加到significant_clusters向量中
+  if (p_values[i] < 0.05) {
+    cat("p值：", p_values[i], "\n")
+    
+    # 提取属于当前聚类的数据点的索引
+    cluster_points <- which(orig_clusters$cluster == i)
+    cat("类数：", i, "\n")
+    cat("原子序数：", data$atomSerialNumber[cluster_points], "\n")
+    cat("该类均值：", orig_means[i],"\n")
+    # 提取属于当前聚类的数据点的坐标
+    cluster_coordinates <- scale_vector[cluster_points, c("X", "Y", "Z")]
+    # 为聚类指定颜色
+    color <- colors[i]
+    i_num[j]<-i
+    j = j+1
+    # 在三维散点图中添加聚类
+    fig_3 <- fig_3 %>% add_trace(data = cluster_coordinates, x = ~X, y = ~Y, z = ~Z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i), marker = list(color = color))
+  }
+}
+# 设定散点图的布局
+fig_3 <- fig_3 %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 显示散点图
+fig_3
+#讲所有类标签存储到表格中
+i_num <- data.frame(i_num)
+i_num <- as.numeric(i_num)
+# 提取所有显著性聚类的点的索引
+significant_pointer <- which(orig_clusters$cluster %in% i_num)
+# 提取所有显著性聚类的点的xyz和突变频率
+significant_data <- scale_vector[significant_pointer, c("X", "Y", "Z", "V4")]
+
+# 输出结果
+print(significant_data)
+
+
+
+
+
+
+
+
+
+
+
+new_scale<-data.frame(x=data2$x,y=data2$y,z = data2$z,mutation = freq_trans_3)
+# 使用Rtsne进行t-SNE降维和可视化
+tsne_result <- Rtsne(new_scale, dims = 2, perplexity = 30, verbose = TRUE)
+plot(tsne_result$Y, pch = 20)
+
+# 创建一个困惑度向量，包含不同的困惑度取值
+perplexities <- seq(5, 50, by = 5)
+
+# 使用多个困惑度取值进行t-SNE降维
+tsne_results <- list()
+for (i in seq_along(perplexities)) {
+  cat("Running t-SNE with perplexity =", perplexities[i], "\n")
+  tsne_results[[i]] <- Rtsne(new_scale, dims = 2, perplexity = perplexities[i], verbose = TRUE)
+  cat("Time is : ", tsne_results[[i]]$times$Y_total, "\n")
+}
+
+
+# 绘制不同困惑度取值下的t-SNE结果和可视化结果
+par(mfrow = c(2, 3))
+for (i in seq_along(perplexities)) {
+  plot(tsne_results[[i]]$Y, pch = 20, main = paste("Perplexity =", perplexities[i]))
+}
+
+# 运行t-SNE算法10次
+tsne_results_1 <- list()
+for (i in 1:10) {
+  tsne_results_1[[i]] <- Rtsne(new_scale, dims = 2, perplexity = 30, verbose = TRUE)
+}
+
+# 综合结果
+Y <- tsne_results_1[[1]]$Y
+for (i in 2:10) {
+  Y <- Y + tsne_results_1[[i]]$Y
+}
+Y <- Y / 10
+plot(Y, pch = 20)
+
+# 运行DBSCAN聚类算法
+dbscan_cluster <- dbscan(Y, eps = 0.5, minPts = 5)
+
+# 将聚类结果和原始数据合并为一个数据框
+df <- data.frame(Y, cluster = dbscan_cluster$cluster)
+
+# 使用ggplot2绘制散点图，并将聚类结果用颜色标识
+ggplot(df, aes(x = X1, y = X2, color = factor(cluster))) + 
+  geom_point() +
+  labs(title = "DBSCAN Clustering Results")
+
+
+
+# 使用K-means聚类算法将数据集分成K个类
+k <- 122
+kmeans_result <- kmeans(new_scale, k)
+colors <- heat.colors(unique(kmeans_result$cluster))
+class_mean_distances <- numeric(length(k))
+class_mean_mutation_rates <- numeric(length(k))
+# 创建一个列表，用于保存检验结果
+test_results <- list()
+
+# 在三维点图中可视化所有数据点和p值小于0.05的聚类中的数据点 
+fig_5 <- plot_ly() %>% 
+  add_trace(data = new_scale, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+  layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
+
+fig_6 <- plot_ly() %>% 
+  add_trace(data = new_scale, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+  layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
+# 遍历每个类
+i_num <- list()
+j <- 1
+m<-1
+n<-1
+mean_mutation_rate <- mean(new_scale$mutation)
+higher <- list()
+lower <- list()
+for (i in 1:k) {
+  # 将当前类作为样本1，其他类作为样本2
+  group1 <- new_scale[kmeans_result$cluster == i, ]
+  group2 <- new_scale[kmeans_result$cluster != i, ]
+  welch_t <- t.test(group1, group2, var.equal = FALSE, alternative = "greater") # 将方向改为单侧检验，备择假设为样本1的均值大于样本2的均值
+  # 将检验结果保存到列表中
+  test_results[[i]] <- list(p_value = welch_t$p.value, group1 = group1)
+  if (test_results[[i]]$p_value < 0.05) {
+    cat("Class", i, "p-value <", 0.05, "\n")
+    cat("Class", i, "is significantly different from other classes.\n")
+    cat("Points in Class", i, ":\n")
+    points <- which(kmeans_result$cluster == i)
+    print(data[points, ]) # 输出该类中所有点的信息
+    # 计算该类中所有点之间的欧几里得距离
+    class_distances <- as.matrix(dist(group1))
+    class_distances_vector <- as.vector(class_distances)
+    class_distances_vector <- class_distances_vector[class_distances_vector != 0]
+    class_mean_distances[i] <- mean(class_distances_vector)
+    class_mean_mutation_rates[i] <- mean(new_scale[kmeans_result$cluster == i, "mutation"])
+    # 输出该类中所有点之间距离的统计量
+    cat("Class", i, "distance statistics:\n")
+    cat("Mean distance:", mean(class_distances_vector), "\n")
+    cat("Median distance:", median(class_distances_vector), "\n")
+    cat("Minimum distance:", min(class_distances_vector), "\n")
+    cat("Maximum distance:", max(class_distances_vector), "\n")
+    i_num[j] <- i
+    j <- j+1
+    if (mean(new_scale[kmeans_result$cluster == i, "mutation"]) < mean_mutation_rate){
+      lower[n] <- i
+      n<-n+1
+    }else{
+      higher[m]<-i
+      m<-m+1
+    }
   }
 }
 
-# 设定散点图的布局
-fig <- fig %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 将平均距离和平均突变率存储在一个数据框中
+class_summary <- data.frame(mean_distance = class_mean_distances, mean_mutation_rate = class_mean_mutation_rates)
 
+# 使用ggplot2包绘制折线图
+library(ggplot2)
+ggplot(class_summary, aes(x = mean_distance, y = mean_mutation_rate)) + geom_line() + geom_point() + xlab("Mean Distance") + ylab("Mean Mutation Rate") + ggtitle("Mean Distance vs. Mean Mutation Rate")
+
+i_num <- data.frame(i_num)
+i_num <- as.numeric(i_num)
+higher<-data.frame(higher)
+higher<-as.numeric(higher)
+lower<-data.frame(lower)
+lower<-as.numeric(lower)
+for (i in 1:length(higher)){
+  color = colors[i]
+  cluster_points <- which(kmeans_result$cluster == higher[i])
+  cluster_coordinates <- new_scale[cluster_points, c("x", "y", "z")]
+  fig_5 <- fig_5 %>% add_trace(data = cluster_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", higher[i]), marker = list(color = color))
+  
+}
+fig_5 <- fig_5 %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
 # 显示散点图
-fig
+fig_5
+
+for (i in 1:length(lower)){
+  color = colors[i]
+  cluster_points <- which(kmeans_result$cluster == lower[i])
+  cluster_coordinates <- new_scale[cluster_points, c("x", "y", "z")]
+  fig_6 <- fig_6 %>% add_trace(data = cluster_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", lower[i]), marker = list(color = color))
+  
+}
+fig_6 <- fig_6 %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 显示散点图
+fig_6
+
+# 初始化特征名称和p值向量
+features <- c("x", "y", "z", "mutation")
+p_values <- numeric(length(features))
+
+fig_7 <- plot_ly() %>% 
+  add_trace(data = new_scale, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = "All Points") %>% 
+  layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z"))) 
+i_num_2<-list()
+q<-1
+for (i in 1:length(i_num)){
+  group3<-new_scale[kmeans_result$cluster == i_num[i], ]$x
+  group4<-new_scale[kmeans_result$cluster != i_num[i], ]$x
+  group5<-new_scale[kmeans_result$cluster == i_num[i], ]$y
+  group6<-new_scale[kmeans_result$cluster != i_num[i], ]$y
+  group7<-new_scale[kmeans_result$cluster == i_num[i], ]$z
+  group8<-new_scale[kmeans_result$cluster != i_num[i], ]$z
+  group9<-new_scale[kmeans_result$cluster == i_num[i], ]$mutation
+  group10<-new_scale[kmeans_result$cluster != i_num[i], ]$mutation
+  welch_t_1 <- t.test(group3, group4, var.equal = FALSE, alternative = "greater")
+  welch_t_2 <- t.test(group5, group6, var.equal = FALSE, alternative = "greater")
+  welch_t_3 <- t.test(group7, group8, var.equal = FALSE, alternative = "greater")
+  welch_t_4 <- t.test(group9, group10, var.equal = FALSE, alternative = "greater")
+  cat("类数:", i_num[i], "\n")
+  cat("x特征p值：", welch_t_1$p.value,"\n")
+  cat("y特征p值：", welch_t_2$p.value,"\n")
+  cat("z特征p值：", welch_t_3$p.value,"\n")
+  cat("mutation特征p值：", welch_t_4$p.value,"\n")
+  
+  # 更新p值向量
+  p_values[1] <- welch_t_1$p.value
+  p_values[2] <- welch_t_2$p.value
+  p_values[3] <- welch_t_3$p.value
+  p_values[4] <- welch_t_4$p.value
+  
+  # 找到最小p值对应的特征
+  min_p_index <- which.min(p_values)
+  min_p_feature <- features[min_p_index]
+  
+  # 输出结果
+  cat("最小p值：", p_values[min_p_index], "\n")
+  cat("最小p值对应的特征：", min_p_feature, "\n")
+  
+  if (features[min_p_index] == "mutation") {
+    i_num_2[q] <- i_num[i]
+    q<-q+1
+    # 提取对应类别的数据
+    p_points <- which(kmeans_result$cluster == i_num[i])
+    cat("原子序数：", data$atomSerialNumber[p_points], "\n")
+    cat("该类均值：", class_mean_mutation_rates[i_num[i]],"\n")
+    # 提取属于当前聚类的数据点的坐标
+    p_coordinates <- new_scale[p_points, c("x", "y", "z")]
+    # 为聚类指定颜色
+    color <- colors[i]
+    # 在三维散点图中添加聚类
+    fig_7 <- fig_7 %>% add_trace(data = p_coordinates, x = ~x, y = ~y, z = ~z, type = "scatter3d", mode = "markers", name = paste("Cluster ", i_num[i]), marker = list(color = color))
+  }
+}
+# 设定散点图的布局
+fig_7 <- fig_7 %>% layout(scene = list(xaxis = list(title = "X"), yaxis = list(title = "Y"), zaxis = list(title = "Z")))
+# 显示散点图
+fig_7
+i_num_2<-data.frame(i_num_2)
+i_num_2 <- as.numeric(i_num_2)
+# 提取所有显著性聚类的点的索引
+significant_pointer <- which(kmeans_result$cluster %in% i_num_2)
+# 提取所有显著性聚类的点的xyz和突变频率
+significant_data <- new_scale[significant_pointer, c("x", "y", "z", "mutation")]
+significant_sn <- data[significant_pointer,c("atomSerialNumber")]
+# 输出结果
+print(significant_data)
+print(significant_sn)
+
+
+
+# 将类别列添加到数据集中
+new_scale$cluster <- kmeans_result$cluster
+
+# 构建随机森林模型
+rf_model <- randomForest(cluster ~ ., data = new_scale, ntree = 100)
+
+# 查看变量的重要性
+var_importance <- importance(rf_model)
+
+# 输出变量重要性
+print(var_importance)
+
+
