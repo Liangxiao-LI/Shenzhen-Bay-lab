@@ -1,9 +1,17 @@
 # 生成随机的三维坐标数据
 data <- read.csv("data1.csv")
+
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+data <- read_excel("6vxx_variants.xls")
+
+data
+
 sub_data<-data[1:972,c("X","Y","Z","virusPercent")]
 sub_data_1<-data[1:972,c("X","Y","Z")]
 # 计算每个维度的基本统计信息
 summary(sub_data)
+
+test <- as.numeric(sub_data[1:972,c("X")])
 
 # 绘制散点图
 library(plot3D)

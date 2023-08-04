@@ -23,7 +23,11 @@ library(spatstat)
 library(clValid)
 
 # Load data with spatial coordinates and mutation rates
+#Pipe
 data<-as.data.frame(read.csv("data1.csv"))
+#Xiao
+
+
 data<-na.omit(data)
 data_matrix<-as.matrix(data)
 data2<-data[1:972,c("X","Y","Z","virusPercent")]

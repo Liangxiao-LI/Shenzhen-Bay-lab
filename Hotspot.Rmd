@@ -1,0 +1,425 @@
+---
+title: "Hotspot-Final"
+author: "Liangxiao LI"
+date: "2023-07-17"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Load library
+Parameter change: at row 180
+```{r cars, echo=FALSE, include=FALSE}
+library(sp)
+library(spgwr)
+#library(spdep)
+library(readxl)
+#library(spatialreg)
+library(gstat)
+library(stats)
+library(dbscan)
+library(cluster)
+library(ggplot2)
+library(scatterplot3d)
+library(rgl)
+library(mclust)
+library(plotly)
+library(dplyr)
+library(FNN)
+library(matrixStats)
+library(tidyr)
+library(scales)
+library(factoextra)
+library(spatstat)
+library(clValid)
+library(factoextra)
+library(fpc)
+library(NbClust)
+library(readxl)
+library(plot3D)
+library(DT)
+```
+
+## Load data
+
+Load data with spatial coordinates and mutation rates
+
+```{r, echo=FALSE}
+#Pipe
+#data<-as.data.frame(read.csv("data1.csv"))
+
+#Xiao
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+data <- read_excel("6vxx_variants.xls")
+
+
+data<-na.omit(data) #去除na值
+data_matrix<-as.matrix(data)
+data2<-data[1:972,c("X","Y","Z","virusPercent")]
+log_virus_percent <- log(data2$virusPercent)
+
+```
+
+## Prove necessary to do normalise
+
+
+```{r, echo=FALSE}
+# generate random 3-d coordinate
+#Pipe
+#data <- read.csv("data1.csv")
+#Xiao
+setwd("/Users/ryan/Documents/GitHub/Shenzhen Bay lab/spike_protein_3structures_markerd_with_variants_from_cncb")
+data <- read_excel("6vxx_variants.xls")
+
+sub_data<-data[1:972,c("X","Y","Z","virusPercent")]
+sub_data_1<-data[1:972,c("X","Y","Z")]
+# 计算每个维度的基本统计信息
+summary(sub_data)
+
+```
+
+##Some plots
+
+
+##Prove necessary to do normalization
+
+Method 1 : 2 sample t test
+
+Caculate each dimension's mean and standard error
+
+```{r, echo=FALSE}
+apply(sub_data,2,mean)
+apply(sub_data,2,sd)
+```
+
+
+
+H0 : equal mean
+H1 : not equal mean
+
+if p-value small, then 2 covariates has significant difference between mean and standard error, which means it requires normalization.(scale)
+
+
+```{r, echo=FALSE}
+
+t.test(sub_data[, 1], sub_data[, 2])
+t.test(sub_data[, 1], sub_data[, 3])
+t.test(sub_data[, 2], sub_data[, 3])
+
+```
+
+Method 2: correlation analysis
+
+```{r, echo=FALSE}
+
+#方差分析空间差异性
+data_df<-as.data.frame(sub_data_1)
+
+# 计算皮尔逊相关系数
+cor_mat <- cor(data_df, method = "pearson")
+# 查看相关系数矩阵
+print(cor_mat)
+#相关系数的范围在 -1 到 1 之间,
+#绝对值越大则表示相关性越强，而正负号则表示相关性的方向
+
+for (i in 1:(ncol(data_df) - 1)) {
+  for (j in (i + 1):ncol(data_df)) {
+    cor_test <- cor.test(data_df[, i], data_df[, j], method = "pearson")
+    cat("correlation between", names(data_df)[i], "and", names(data_df)[j], "is", cor_test$estimate, "with p-value", cor_test$p.value, "\n")
+  }
+}
+
+
+# 计算肯德尔等级相关系数
+cor_mat_2 <- cor(data_df, method = "kendall")
+# 查看相关系数矩阵
+print(cor_mat_2)
+# 计算多个变量之间的肯德尔等级相关系数及其显著性水平
+for (i in 1:(ncol(data_df) - 1)) {
+  for (j in (i + 1):ncol(data_df)) {
+    cor_test <- cor.test(data_df[, i], data_df[, j], method = "kendall")
+    cat("correlation between", names(data_df)[i], "and", names(data_df)[j], "is", cor_test$estimate, "with p-value", cor_test$p.value, "\n")
+  }
+}
+
+
+#如果显著性水平非常小（通常小于 0.05），
+#则我们可以认为相关性是显著的，也就是说，在总体水平下，
+#这两个变量之间存在显著的相关性。
+
+```
+
+Therefore, we need to do normalization
+
+##K-means cluster
+
+Clustering
+
+```{r,echo=FALSE}
+
+#抽提坐标数据
+xyz<-data2[,c("X","Y","Z")]
+#标准化xyz数据
+xyz_norm<-scale(xyz)
+# 将标准化处理过的坐标和突变频率组合为特征向量
+feature_vector <- cbind(xyz_norm, data2$virusPercent)
+# 进行 KMeans 聚类
+set.seed(123)
+
+```
+
+Model validation
+```{r}
+
+#Model validation - find best parameter
+index <- data.frame()
+
+#标记最大几个值
+topnum = 3
+
+#K-num iteration
+Kmin <- 3
+Kmax <- 150
+iteration <- 5 #iteration number per k num 
+
+for (i in Kmin:Kmax) {
+  
+  #nstart = 20 means perform k = i for 20 times and select the best cluster outcome among them
+  kmeans_result <- kmeans(feature_vector, centers = i, nstart = iteration)
+  
+  wss <- sum(kmeans_result$withinss)
+  
+  km_stats <- cluster.stats(dist(data2),  kmeans_result$cluster)
+
+  # Dunn index
+  dunn <- km_stats$dunn
+  # Calinski-Harabasz index
+  ch <- km_stats$ch
+  # Average silhouette width
+  sil <- km_stats$avg.silwidth
+  #Entropy index
+  ent <- km_stats$entropy
+
+  
+  
+  # number of noise points :Noise points are data points that do not belong to any specific cluster or are considered outliers
+  km_stats$noisen
+  # vector of clusterwise within cluster average distances. (这个是scaled version的average distance， non-scaled version到时候还得再算一下)
+  km_stats$average.distance
+  # Calculate the separation matrix. provides a summary of the between-cluster distances and can help identify clusters that are well-separated or overlapping.
+  #The separation matrix is a symmetric matrix that quantifies the degree of separation between clusters based on some distance measure. 
+  separation_matrix <- km_stats$separation.matrix
+  
+  index <- rbind(index, c(dunn, ch, sil, ent,wss))
+  
+  }
+
+```
+
+```{r}
+
+
+colnames(index) <- c("Dunn", "Calinski-Harabasz", "Average_Silhouette_Width", "Entropy","Wss")
+
+#par(mfrow = c(2, 2))
+
+# Line chart for Dunn Index
+plot(index$Dunn, type = "l", xlab = "Observation", ylab = "Dunn Index", main = "Dunn Index",xlim = c(0, length(index$Dunn) +1), ylim = c(min(index$Dunn)*0.95, max(index$Dunn)*1.2 ))
+
+#创建表
+top_dun <- data.frame()
+
+# 标记最大值，并加进表里
+sorted <- sort(index$Dunn, decreasing = TRUE)
+top_three <- head(sorted, topnum)
+
+print(top_three)
+
+for (i in 1:length(top_three)) {
+  
+  num <- which(index$Dunn == top_three[i])
+  text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+  
+  top_dun <- rbind(top_dun, c(i,top_three[i]) )
+}
+colnames(top_dun) <- c("K-Num", "Dunn")
+datatable(top_dun)
+
+```
+
+
+```{r}
+
+# Line chart for Calinski-Harabasz Index
+plot(index$`Calinski-Harabasz`, type = "l", xlab = "Observation", ylab = "Calinski-Harabasz Index", main = "Calinski-Harabasz Index",xlim = c(0, length(index$`Calinski-Harabasz`) +1), ylim = c(min(index$`Calinski-Harabasz`)*0.95, max(index$`Calinski-Harabasz`)*1.2 ))
+
+#创建表
+top_ch <- data.frame()
+
+# 标记最大值
+sorted <- sort(index$`Calinski-Harabasz`, decreasing = TRUE)
+top_three <- head(sorted, topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$`Calinski-Harabasz` == top_three[i])
+  text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+  top_ch <- rbind(top_ch, c(num,top_three[i]) )
+}
+
+colnames(top_ch) <- c("K-Num", "CH")
+datatable(top_ch)
+
+```
+
+
+```{r}
+
+# Line chart for Average Silhouette Width
+plot(index$`Average_Silhouette_Width`, type = "l", xlab = "Observation", ylab = "Average Silhouette Width", main = "Average Silhouette Width",xlim = c(0, length(index$`Average_Silhouette_Width`) +1), ylim = c(min(index$`Average_Silhouette_Width`)*0.95, max(index$`Average_Silhouette_Width`)*1.2))
+
+#创建表
+top_ASW <- data.frame()
+
+# 标记最大值
+sorted <- sort(index$`Average_Silhouette_Width`, decreasing = TRUE)
+top_three <- head(sorted, topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$`Average_Silhouette_Width` == top_three[i])
+  text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+  top_ASW <- rbind(top_ASW, c(num,top_three[i]) )
+}
+
+colnames(top_ASW) <- c("K-Num", "CH")
+datatable(top_ASW)
+
+```
+
+
+```{r}
+
+# Line chart for Entropy
+plot(index$Entropy, type = "l", xlab = "Observation", ylab = "Entropy", main = "Entropy",xlim = c(0, length(index$Entropy) +1), ylim = c(min(index$Entropy)*0.95, max(index$Entropy)*1.2))
+
+
+# 标记最大值
+sorted <- sort(index$Entropy, decreasing = FALSE)
+top_three <- head(sorted, topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$Entropy == top_three[i])
+  text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+}
+```
+
+
+```{r}
+
+# Line chart for Wss
+plot(index$Wss, type = "l", xlab = "Observation", ylab = "Wss", main = "Elbow method",xlim = c(0, length(index$Wss) +1), ylim = c(min(index$Wss)*0.95, max(index$Wss)*1.2))
+
+
+# 标记最大值
+sorted <- sort(index$Wss, decreasing = TRUE)
+top_three <- head(sorted,topnum)
+
+for (i in 1:length(top_three)) {
+  num <- which(index$Wss == top_three[i])
+  text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+}
+
+
+# 将聚类结果添加到数据框中
+#data2$cluster <- as.factor(kmeans_result$cluster)
+
+
+```
+
+
+
+Dunn:the higher the better
+(well-separated and compact)
+
+CH:the higher the better
+(well-separated and compact)
+
+S:The higher the better
+(well-separated and compact)
+
+Entropy: the lower the better
+
+Wss: the lower the better
+
+weighted mean score = Dunn percentage + CH percentage + S percentage + entropy percentage + Wss percentage
+
+```{r}
+
+D <- index$Dunn
+A <- index$`Average_Silhouette_Width`
+CH <- index$`Calinski-Harabasz`
+E <- index$Entropy
+Wss <- index$Wss
+
+#创建表
+WS <- data.frame()
+
+for (i in 1:length(D)){
+  
+  weight <- D[i]/max(D) + A[i]/max(A) + CH[i]/max(CH) + (1-E[i]/max(E)) + (1-Wss[i]/max(Wss))
+  
+  WS <- rbind(WS, c(i+Kmin -1 ,weight) )
+  
+}
+
+colnames(WS) <- c("K-Num", "Weighted score")
+datatable(WS)
+
+# Line chart for WS
+plot(WS$`Weighted score`, type = "l", xlab = "K-num", ylab = "Weighted score", main = "Weighted score",xlim = c(0, length(WS$`Weighted score` +1)), ylim = c(min(WS$`Weighted score`)*0.95, max(WS$`Weighted score`)*1.2))
+
+
+# 标记最大值
+sorted <- sort(WS$`Weighted score`, decreasing = TRUE)
+top_three <- head(sorted,topnum)
+
+for (i in 1:length(WS$`Weighted score`)) {
+  num <- which(WS$`Weighted score` == top_three[i])
+  text(x = num, y = top_three[i]*1.05, labels = paste0("T", i, ": ", round(top_three[i],5)), offset = 1)
+  for (n in num){
+    points(x = n, y= top_three[i], col = "red", pch = 19)
+  }
+}
+
+```
+
+
+Therefore, we choose k = ? as our parameter in this circumstances.
+
+
+##Determine parameter
+
+For K-means method, we take k = ?
+
+

@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Load library
-Parameter change: at row 414(K-num iteration)，row 677,1006 (aplha for significance test),  827,1169 alp(alpha for high-mutation point test)
+Parameter change: at row 414(K-num iteration) topnum, filename，row 677,993 (aplha for significance test), row 699,1020 n_permutations for significance of permutation. 808,1120 alp(alpha for high-mutation point test, and per_num, which is very important), 
 
 
 
@@ -47,7 +47,7 @@ library(DT)
 # 加载ks包，用于进行Kolmogorov-Smirnov检验
 library(ks)
 library(gridExtra)
-
+#library(writexl)
 ```
 
 ## Load data
@@ -411,12 +411,15 @@ Clustering - Model validation (Find best parameter)
 index <- data.frame()
 
 #标记最大几个值
-topnum = 3
+topnum = 20
+file_names <- c("output_1.csv", "output_2.csv", "output_3.csv", "output_4.csv",, "output_5.csv", "output_6.csv", "output_7.csv", "output_8.csv", "output_9.csv", "output_10.csv", "output_11.csv", "output_12.csv", "output_13.csv", "output_14.csv", "output_15.csv", "output_16.csv", "output_17.csv", "output_18.csv", "output_19.csv", "output_20.csv")
+#file_names <- c("output_1.csv", "output_2.csv", "output_3.csv")
+
 
 #K-num iteration
-Kmin <- 40
-Kmax <- 45
-iteration <- 1 #iteration number per k num 
+Kmin <- 5
+Kmax <- 200
+iteration <- 20 #iteration number per k num 
 
 for (i in Kmin:Kmax) {
   
@@ -454,7 +457,7 @@ for (i in Kmin:Kmax) {
 
 ```{r,echo=FALSE}
 cat("显示最高指数数量：", topnum, "\n")
-cat("K选择迭代尝试范围：", Kmin, "--", Kmax)
+cat("K选择迭代尝试范围：", Kmin, "--", Kmax, "\n")
 cat("每个K循环聚类次数：", iteration)
 ```
 
@@ -585,7 +588,7 @@ plot(index$Wss, type = "l", xlab = "Observation", ylab = "Wss", main = "Elbow me
 
 
 # 标记最大值
-sorted <- sort(index$Wss, decreasing = TRUE)
+sorted <- sort(index$Wss, decreasing = FALSE)
 top_three <- head(sorted,topnum)
 
 for (i in 1:length(top_three)) {
@@ -693,7 +696,7 @@ orig_means <- tapply(new_data$mutation, orig_clusters$cluster, mean)
 orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
 
 # 进行2000次突变概率重排并计算每次聚类结果
-n_permutations <- 2000
+n_permutations <- 1
 perm_results <- matrix(NA, n_permutations, length(orig_means))
 for (i in 1:n_permutations) {
   perm_data <- data3
@@ -749,7 +752,7 @@ if (p_values[which.max(orig_means)]< alpha) {
   k_validated <- rbind(k_validated,k)
 } else {
   # 如果 condition 为 FALSE，则执行这里的代码
-  cat("对应的p值过大，不拒绝H0")
+  cat("对应的p值过大，不拒绝H0","\n")
 }
 
 
@@ -803,45 +806,35 @@ cluster_data <- scale_vector[orig_clusters$cluster == which.max(orig_means), ]
   
 }
 
+
+
+
+
+
+
+#突变概率重排
+per_num <- 10 # 重排聚类次数
+alp <- 0.95
+temp_data <- new_data
+
+
 #筛选p值，p值过小的点的k才选中
 if (length(k_validated) == 0) {
   Final_K <- 0
 } else {
   # 如果 condition 为 FALSE，则执行这里的代码
-  colnames(k_validated) <- c("K")
+colnames(k_validated) <- c("K")
 
 # 选取 K-num 与 K_validated 相同的行
 Final_K <- Best_K[Best_K$`K-num` %in% k_validated$`K`, ]
 
 datatable(Final_K)
 
-}
-
-
-
-```
-
-
-#Permutation-based test determine high mutation spot
-Once we validated our k, we need to find the highest mutation points and their coordinates:
-
-```{r,echo=FALSE,warning=FALSE}
-#突变概率重排
-per_num <- 1000 # 重排聚类次数
-alp <- 0.95
-temp_data <- new_data
-
-if (Final_K == 0){
-    
-    Final_K = 0
-    
-  }else{
-    
 for (k in Final_K[,2]){
   
-data2<-data[1:972,c("X","Y","Z","virusPercent")]
+data2<-data[1:972,c("atomSerialNumber","resID","X","Y","Z","virusPercent")]
 data2 <- data.frame(data2)
-  
+
 kmeans_res <- kmeans(temp_data, centers=k, nstart=iteration)
 
 result <- cbind(temp_data,kmeans_res$cluster)
@@ -896,8 +889,8 @@ for (i in 1:per_num){
 
 
 # Create a new column in 'means' for identifying the high_mutation point
-  col_name <- paste("Is_high")
-  means[, col_name] <- NA
+col_name <- paste("Is_high")
+means[, col_name] <- NA
 
 
 for (i in 1:k){
@@ -929,7 +922,7 @@ high_mut <- means[means$Is_high == 1, ]
 # Copy 'Cluster_Index' column from 'result' to 'data2'
 data2 <- cbind(data2, result$Cluster_Index)
 
-colnames(data2) <- c("X","Y","Z","virusPercent","Cluster_Index")
+colnames(data2) <- c("atomSerialNumber","resID","X","Y","Z","virusPercent","Cluster_Index")
 
 # Create a new column in 'data2' for identifying the high_mutation point
 col_name <- paste("Is_high")
@@ -951,6 +944,7 @@ high_virus_data <- high_virus_data[order(high_virus_data$Cluster_Index), ]
 
 # Print the sorted 'high_virus_data' data frame
 print(high_virus_data)
+write.csv(high_virus_data, file = file_names[which(Final_K[, 2] == k)], row.names = FALSE)
 
 #High_mut_center: a datarame having the cluster_index and the center coordinate
 High_mut_center <- data.frame(matrix(nrow=nrow(high_mut), ncol=4))
@@ -983,32 +977,21 @@ for (i in unique(high_virus_data$Cluster_Index)){
 }
 
 # Print the center coordinates
-cat("K-num:", k)
-cat("Hot spot centers are:")
+cat("K-num:", k,"\n")
+cat("Hot spot centers are:","\n")
 print(High_mut_center)
 
 }
-    
-  }
+
+}
 
 
 
 ```
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+#Permutation-based test determine high mutation spot
+Once we validated our k, we need to find the highest mutation points and their coordinates:
 
 
 
@@ -1034,7 +1017,7 @@ orig_means <- tapply(scale_vector$V4, orig_clusters$cluster, mean)
 orig_pcts <- round(rank(orig_means)/length(orig_means)*100, 2)
 
 # 进行2000次突变概率重排并计算每次聚类结果
-n_permutations <- 2000
+n_permutations <- 1000
 perm_results <- matrix(NA, n_permutations, length(orig_means))
 x_scale <- scale(data3[,1])
 y_scale <- scale(data3[,2])
@@ -1091,7 +1074,7 @@ if (p_values[which.max(orig_means)]< alpha) {
   k_validated <- rbind(k_validated,k)
 } else {
   # 如果 condition 为 FALSE，则执行这里的代码
-  cat("对应的p值过大，不拒绝H0")
+  cat("对应的p值过大，不拒绝H0","\n")
 }
 
 
@@ -1143,48 +1126,29 @@ cluster_data <- scale_vector[orig_clusters$cluster == which.max(orig_means), ]
 
 }
 
+per_num <- 2000 # 重排聚类次数
+alp <- 0.95
+temp_data <- new_data
+
 #筛选p值，p值过小的点的k才选中
 if (length(k_validated) == 0) {
   Final_K <- 0
 } else {
   # 如果 condition 为 FALSE，则执行这里的代码
-  colnames(k_validated) <- c("K")
+colnames(k_validated) <- c("K")
 
 # 选取 K-num 与 K_validated 相同的行
 Final_K <- Best_K[Best_K$`K-num` %in% k_validated$`K`, ]
 
 datatable(Final_K)
 
-}
 
-
-
-```
-
-
-
-#Permutation-based test determine high mutation spot
-
-
-Once we validated our k, we need to find the highest mutation points and their coordinates:
-
-```{r,echo=FALSE,warning=FALSE}
-#突变概率重排
-per_num <- 1000 # 重排聚类次数
-alp <- 0.95
-temp_data <- new_data
-
-if (Final_K == 0){
-    
-    Final_K <- 0
-    
-  }else{
     
 for (k in Final_K[,2]){
   
-data2<-data[1:972,c("X","Y","Z","virusPercent")]
+data2<-data[1:972,c("atomSerialNumber","resID","X","Y","Z","virusPercent")]
 data2 <- data.frame(data2)
-  
+
 kmeans_res <- kmeans(temp_data, centers=k, nstart=iteration)
 
 result <- cbind(temp_data,kmeans_res$cluster)
@@ -1272,7 +1236,7 @@ high_mut <- means[means$Is_high == 1, ]
 # Copy 'Cluster_Index' column from 'result' to 'data2'
 data2 <- cbind(data2, result$Cluster_Index)
 
-colnames(data2) <- c("X","Y","Z","virusPercent","Cluster_Index")
+colnames(data2) <- c("atomSerialNumber","resID","X","Y","Z","virusPercent","Cluster_Index")
 
 # Create a new column in 'data2' for identifying the high_mutation point
 col_name <- paste("Is_high")
@@ -1294,6 +1258,7 @@ high_virus_data <- high_virus_data[order(high_virus_data$Cluster_Index), ]
 
 # Print the sorted 'high_virus_data' data frame
 print(high_virus_data)
+write.csv(high_virus_data, file = file_names[which(Final_K[, 2] == k)], row.names = FALSE)
 
 #High_mut_center: a datarame having the cluster_index and the center coordinate
 High_mut_center <- data.frame(matrix(nrow=nrow(high_mut), ncol=4))
@@ -1326,13 +1291,23 @@ for (i in unique(high_virus_data$Cluster_Index)){
 }
 
 # Print the center coordinates
-cat("K-num:", k)
-cat("Hot spot centers are:")
+cat("K-num:", k,"\n")
+cat("Hot spot centers are:","\n")
 print(High_mut_center)
 
 }
-    
+
+
 }
 
 
+
 ```
+
+
+
+#Permutation-based test determine high mutation spot
+
+
+Once we validated our k, we need to find the highest mutation points and their coordinates:
+
