@@ -5,7 +5,7 @@ Created on Sun Aug  6 15:18:31 2023
 
 @author: ryan
 """
-
+#%%
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
@@ -54,7 +54,7 @@ x = sub_df.iloc[:972,0]
 y = sub_df.iloc[:972,1]
 z = sub_df.iloc[:972,2]
 vp = sub_df.iloc[:972,3]
-vp = np.log(vp)
+vp = np.log10(vp)
 col = np.arange(972)
 
 x = np.array(x)
@@ -103,6 +103,7 @@ for Knum in range(0,k):
         gp = GaussianProcessRegressor(kernel=best_kernel,
                                       optimizer='fmin_l_bfgs_b',  # Use L-BFGS-B optimizer
                                       n_restarts_optimizer=3,   # Number of optimizer restarts
+                                      alpha=0.1,
                                       random_state=0) 
         
         gp.fit(X_train, vp_train_noi)

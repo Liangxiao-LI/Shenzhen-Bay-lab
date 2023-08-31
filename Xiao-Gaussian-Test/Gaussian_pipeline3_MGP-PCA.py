@@ -28,7 +28,7 @@ from sklearn.gaussian_process.kernels import RationalQuadratic,WhiteKernel
 #from imblearn.under_sampling import RandomUnderSampler
 #from imblearn.over_sampling import SMOTERegression
 from sklearn.ensemble import RandomForestRegressor
-
+from sklearn.decomposition import PCA
 #%%
 noise_level = 0.01 #! noise level for gaussian process (Since our dataset is small, it would be better to choose a rather small noise level)
 K_num_list = [10] #! list of K-fold that you want to iterate with
@@ -115,7 +115,7 @@ plt.legend()
 
 # Show the plot
 plt.show()
-#%%
+
 #%%
 plt.hist(vn, bins=10, color='blue', edgecolor='black')
 
@@ -170,6 +170,32 @@ X = scaler.fit_transform(X)
 X_original = scaler.inverse_transform(X)
 #endregion
 #endregion
+
+#%% MGP-PCA (M)
+
+# Combine X and vn into a single matrix
+data_PCA = np.column_stack((X, vn))
+
+# Create an instance of PCA
+pca = PCA()
+
+# Fit the PCA model to the data
+pca.fit(data_PCA)
+
+# Transform the data using the PCA model
+transformed_data = pca.transform(data_PCA)
+
+# Extract the transformed X and vn
+transformed_X = transformed_data[:, :3]  # Assuming X has 3 columns
+transformed_vn = transformed_data[:, 3]  # Assuming vn is the last column
+
+X = transformed_X
+vn = transformed_vn
+
+# Print the explained variance ratio
+print("Explained Variance Ratio:", pca.explained_variance_ratio_)
+
+
 #%% Cross validation find best gp
 #region GP model
 score = -1000
