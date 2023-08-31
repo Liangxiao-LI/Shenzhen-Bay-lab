@@ -134,6 +134,8 @@ smote = SMOTE(sampling_strategy='auto', random_state=42)
 # Perform SMOTE oversampling
 X_resampled, labels_resampled = smote.fit_resample(X, labels)
 
+#we discover that the added oversampling values are all behind the original values
+matching_indices = np.where((X[:, None] == X_resampled).all(-1))[1]
 
 vp_resampled = []
 for i in X_resampled:
@@ -181,8 +183,6 @@ vp_resampled = np.array(vp_resampled)
         
 #%% Cross validation find best gp
 
-
-
 score = -1000
 
 for size in [0.05]:
@@ -194,38 +194,43 @@ for size in [0.05]:
     
     X_train, X_test, vp_train, vp_test = train_test_split(X_resampled, vp_resampled, test_size=size, random_state= seed)
 
+#we discover that the added oversampling values are all behind the original values
+vp_selected = vp[vp > 0.2]
+X_selected = X[vp_selected.index]
+matching_indices = np.where((X_selected[:, None] == X_train).all(-1))[1]
+len(matching_indices)
 #%%
 #Rational Quadratic best: size = 0.1,seed = 20, alpha = 1, length_scale = 1
-    for K_num in [10]:
-        for l in [1]:
-            for alpha_num in [1]:
-                
-                ker = RationalQuadratic(length_scale= l ,alpha=alpha_num,length_scale_bounds=(1e-100,1e100))  # You can choose other kernels as well
-                
-                gp = GaussianProcessRegressor(kernel=ker,
-                                              optimizer='fmin_l_bfgs_b',  # Use L-BFGS-B optimizer
-                                              n_restarts_optimizer=3) 
-                
-                #gp.fit(X_train, vp_train_noi)
-                gp.fit(X_train,vp_train)
-                
-                print(f"The model is {gp}")
-                print(f"The K-Fold is {K_num}")
-                print(f"The size is {size}")
-               
-                
-                #neg_mean_squared_error --> super smart way, since most optimization target at maximizing the score, 
-                #but we want to minimize the mean_square error, which is the same as maximizing the negative mean squared error
-                
-                #temp_score = np.mean(cross_val_score(gp, X_train, vp_train, cv= K_num, scoring='neg_mean_squared_error'))
-                
-                temp_score = gp.log_marginal_likelihood()
-                
-                if score < temp_score:
-                        
-                    best_gp = gp
-                    score = temp_score
-                    K = K_num
+for K_num in [10]:
+    for l in [1]:
+        for alpha_num in [1]:
+            
+            ker = RationalQuadratic(length_scale= l ,alpha=alpha_num,length_scale_bounds=(1e-100,1e100))  # You can choose other kernels as well
+            
+            gp = GaussianProcessRegressor(kernel=ker,
+                                            optimizer='fmin_l_bfgs_b',  # Use L-BFGS-B optimizer
+                                            n_restarts_optimizer=3) 
+            
+            #gp.fit(X_train, vp_train_noi)
+            gp.fit(X_train,vp_train)
+            
+            print(f"The model is {gp}")
+            print(f"The K-Fold is {K_num}")
+            print(f"The size is {size}")
+            
+            
+            #neg_mean_squared_error --> super smart way, since most optimization target at maximizing the score, 
+            #but we want to minimize the mean_square error, which is the same as maximizing the negative mean squared error
+            
+            #temp_score = np.mean(cross_val_score(gp, X_train, vp_train, cv= K_num, scoring='neg_mean_squared_error'))
+            
+            temp_score = gp.log_marginal_likelihood()
+            
+            if score < temp_score:
+                    
+                best_gp = gp
+                score = temp_score
+                K = K_num
 
 #%% Take into test set
 
